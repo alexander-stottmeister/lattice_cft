@@ -1,0 +1,525 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm,mathrsfs}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{booktabs}
+\usepackage[colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+\newtheorem{claim}{Claim}
+\newtheorem{observation}[claim]{Observation}
+\theoremstyle{definition}
+\newtheorem{finding}{Finding}
+
+\newcommand{\eps}{\varepsilon}
+\newcommand{\hs}{\mathfrak{h}}
+\newcommand{\Gi}{\Gamma_{\!\infty,\pm}}
+\newcommand{\DW}{\mathcal{D}_W}
+\newcommand{\Dstd}{\mathcal{D}_{\mathrm{std}}}
+\newcommand{\sh}{\hat{s}}
+\newcommand{\OS}{\textup{[OS]}}
+
+\title{A critical re-reading of\\
+\emph{Conformal field theory from lattice fermions}\\
+\normalsize T.~J.~Osborne and A.~Stottmeister, Commun.\ Math.\ Phys.\ \textbf{405}, 219 (2024); arXiv:2301.00816}
+\author{}
+\date{29 July 2026}
+
+\begin{document}
+\maketitle
+\vspace{-2.2em}
+
+\begin{abstract}
+\noindent
+This is an independent second pass over the technical core of \OS{} (Sections 3.1--3.2, 4.2.3--4.2.4,
+5, 6), carried out without deference to the earlier verification note in
+\texttt{osborne-stottmeister2023/}, which recorded ``\textsc{correct}, no logical gaps.''
+That verdict is too generous. The main theorems still look true, and I found no
+counterexample to any of them. But the paper contains \textbf{one invalid proof step
+that recurs in three places}, \textbf{one error estimate that is vacuous (indeed $+\infty$)
+as stated}, \textbf{a hierarchy of unstated regularity thresholds} whose numerical values are
+much larger than the folklore ``$K\ge 2$ suffices'', \textbf{one remark that does not follow
+from the lemma it invokes}, \textbf{a normalisation inconsistency that would change the
+central charge to $c=(L/\pi)^2$ if read literally}, and \textbf{two unproved ingredients that
+carry the whole proof of Theorem 6.3}. All numerical claims below were verified against
+explicitly constructed Daubechies filters; the scripts are in \texttt{numerics/}.
+\end{abstract}
+
+\section*{Summary of findings}
+\begin{center}
+\footnotesize
+\begin{tabular}{cp{4.1cm}p{6.5cm}l}
+\toprule
+\# & Location & Issue & Severity \\
+\midrule
+1 & Lemma 4.5, p.~46 & dominating function: the $\sh$-ratio bound is false & \textbf{gap, repairable} \\
+2 & (204)--(210), p.~53--54 & $\mathrm{Error}^2(\delta,L,k,N)=+\infty$ for $k\neq0$ (Ramond) & \textbf{not established} \\
+3 & ``sufficiently regular'' & three thresholds, none stated; $\delta{=}2$ needs $K\ge9$ & \textbf{hypothesis gap} \\
+4 & Remark 4.14, p.~50 & $P^\pm$ does not preserve $\DW$; claim does not follow & \textbf{gap, repairable} \\
+5 & Def.~4.2 (181)/(199) vs (165)/(167) & $\ell_{\pm,k}$ off by $L/\pi$; (170) would give $c=(L/\pi)^2$ & normalisation \\
+6 & Thm.~6.3 proof, p.~64 & the two decisive ingredients are asserted, not proved & \textbf{rigor debt} \\
+7 & Thm.~4.16 preamble, p.~50 & ``preserving localization (Prop.~3.6)'' not established & overstatement \\
+8 & (25), Lem.~3.7, (204)/(205) & typos / vacuous constants & cosmetic \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip\noindent
+Findings 1, 2 and 3 are one phenomenon seen from three sides, so I treat them together in
+Section~\ref{sec:ratio}--\ref{sec:reg}. Nothing here contradicts Theorems A, B, C.
+
+\section{The $\hat s$-ratio: a systematic invalid step}\label{sec:ratio}
+
+\subsection{The zeros of $\hat s$}
+
+Throughout, $s$ is a compactly supported orthonormal Daubechies scaling function of order
+$K$ (so $2K$ taps), $m_0$ its low-pass symbol and
+$\sh(\xi)=\prod_{j\ge1}m_0(2^{-j}\xi)$ as in (102). Two elementary facts are used
+nowhere in \OS{} but are decisive:
+
+\begin{observation}\label{obs:zeros}
+Orthonormality gives $\sum_{n\in\mathbb Z}|\sh(\xi+2\pi n)|^2=1$; at $\xi=0$ together with
+$\sh(0)=1$ this forces $\sh(2\pi n)=0$ for every $n\neq0$. Moreover
+$\sh(\xi)=\big(e^{-i\xi/2}\tfrac{\sin(\xi/2)}{\xi/2}\big)^{K}\prod_{j\ge1}L(2^{-j}\xi)$, so the
+zero at $2\pi n$ has order exactly $K$.
+\end{observation}
+
+\noindent
+Numerically (\texttt{numerics/os\_check.py}, block [0]--[1]): $|\sh(2\pi n)| \le 10^{-12}$ for
+$\mathrm{db}2,\dots,\mathrm{db}6$ and $n=1,2,3,5$, and
+$|\sh(2\pi+\delta)|\sim\delta^{p}$ with $p=2.00,\,2.18,\,3.08$ for $K=2,3,4$.
+
+\subsection{Finding 1: the dominating function in Lemma 4.5}
+
+\begin{finding}\label{f:lemma45}
+The domination step in the proof of Lemma 4.5 is invalid, and the stated inequality is false.
+\end{finding}
+
+\noindent
+The proof reduces convergence to $\ell^2(\Gi,(2L)^{-1})$-convergence of
+\[
+  f^{(N)}_k(M,m)=\sh(\eps_N m)\,\cos(\tfrac14\eps_Nk)^2\,
+  \frac{\sin(\eps_N(m+\tfrac k2))}{\eps_N}\prod_{j=1}^{N-M}m_0\big(\eps_{M+j}(m+k)\big)
+  \;\longrightarrow\; f_k(M,m)=\sh(\eps_M(m+k))\,(m+\tfrac k2),
+\]
+and asserts the existence of an $\ell^2$-dominating function via
+\begin{equation}\label{eq:badbound}
+  |f^{(N)}_k(M,m)|\;\le\;\Big|(m+\tfrac k2)\sh(\eps_M(m+k))\Big|
+  \left|\frac{\sh(\eps_N m)}{\sh(\eps_N(m+k))}\right|
+  \;\le\; C_k\Big|(m+\tfrac k2)\sh(\eps_M(m+k))\Big|,
+\end{equation}
+``for some $C_k>0$, because of the uniform continuity of $\sh$.''
+
+Two things go wrong. First, \emph{uniform continuity of $\sh$ controls the difference
+$\sh(\eps_Nm)-\sh(\eps_N(m+k))$, never the quotient}; bounding a quotient needs a lower bound
+on $|\sh|$, which is exactly what Observation~\ref{obs:zeros} denies. Second, and concretely:
+in the Ramond sector $\Gamma_{\infty,+}=\frac{\pi}{L}\mathbb Z$ one may choose
+\[
+  m+k=\frac{2\pi n}{\eps_N}=\frac{\pi}{L}\,2^{N+1}n\ \in\ \Gamma_{\infty,+},\qquad n\neq0,
+\]
+so that $\sh(\eps_N(m+k))=\sh(2\pi n)=0$ while $\sh(\eps_N m)=\sh(2\pi n-\eps_Nk)\neq0$ for
+$k\neq0$. The middle expression in \eqref{eq:badbound} is then $\infty$, and the right-hand
+side is $0$ (because $\sh(\eps_M(m+k))=\sh(2^{N-M}\!\cdot\!2\pi n)=0$ as well), while the
+left-hand side is strictly positive. \emph{No constant $C_k$ makes \eqref{eq:badbound} true.}
+
+\medskip\noindent
+Numerically (\texttt{os\_check2.py}, block [4]), for $\mathrm{db}4$, $M=2$, $L=\pi$:
+
+\begin{center}\small
+\begin{tabular}{ccrll}
+\toprule
+$N$ & $k$ & $m$ & $|f^{(N)}_k(M,m)|$ & claimed bound $C_k|f_k(M,m)|$\\
+\midrule
+6 & 2 & $126$    & $1.547\cdot10^{-6}$  & $C_k\cdot 7.7\cdot10^{-27}$ (i.e.\ $0$)\\
+8 & 2 & $510$    & $5.936\cdot10^{-9}$  & $C_k\cdot 3.1\cdot10^{-26}$ (i.e.\ $0$)\\
+10& 2 & $2046$   & $2.307\cdot10^{-11}$ & $C_k\cdot 1.2\cdot10^{-25}$ (i.e.\ $0$)\\
+\bottomrule
+\end{tabular}
+\end{center}
+(The right-hand column is machine zero: $\sh$ vanishes there to order $K$.)
+
+\subsection{Why the lemma is nevertheless true, and how to repair the proof}
+
+The saving grace is that at these resonances the \emph{sine} factor is also near a zero:
+$\eps_N(m+\tfrac k2)=2\pi n-\tfrac12\eps_Nk$, so
+$\sin(\eps_N(m+\tfrac k2))/\eps_N\approx -k/2$ rather than $\approx m$. Together with
+$|\sh(2\pi n-\eps_Nk)|\asymp c_n(\eps_N|k|)^K$ this gives
+$|f^{(N)}_k(M,m)|=O(\eps_N^{\,K})$ at the resonance points. Measured decay
+(\texttt{os\_check2.py}, block [6]): $2^{-pN}$ with $p=2.003,\,3.003,\,4.005$ for
+$\mathrm{db}2,3,4$ --- i.e.\ exactly $p=K$.
+
+\begin{claim}[repair]
+Do not form the quotient. Bound instead
+\[
+  |f^{(N)}_k(M,m)|\;\le\;\Big|m+\tfrac k2\Big|\;\big|\sh(\eps_N m)\big|
+  \prod_{j=1}^{N-M}\big|m_0(\eps_{M+j}(m+k))\big| ,
+\]
+and estimate the \emph{finite product} directly by the paper's own Lemma 3.7 inside the
+$N$-th Brillouin zone ($|m+k|\le\pi/\eps_N$), and by $|\sh(\eps_Nm)|\le C(1+\eps_N|m|)^{-(K-\bar K)}$
+together with the $2^{N-M+1}\pi$-periodicity of the product outside it. This yields
+$g_k(M,m)=C_{k,M}(1+|m|)^{-(K-\bar K-1)}$, which lies in $\ell^2$ under the same condition as
+the paper's own $g_k$.
+\end{claim}
+
+\noindent
+Lemma 3.7 is proved in \OS{} for precisely this purpose (``\emph{a decay estimate on the finite
+products \dots that directly implies (102) \dots by dominated convergence}''), and is then not
+used in the proof of Lemma 4.5. The repair is therefore book-keeping, not new mathematics.
+
+\medskip\noindent
+Two numerical confirmations (\texttt{os\_check2.py} [5], \texttt{os\_check3.py} [9]):
+\begin{itemize}[leftmargin=1.4em,itemsep=1pt]
+\item $\sum_m|f^{(N)}_k(M,m)-f_k(M,m)|^2\to0$ monotonically; for $\mathrm{db}4$, $M=2$, $k=2$ it
+falls from $1.36\cdot10^{1}$ at $N=4$ to $1.01\cdot10^{-4}$ at $N=14$, with a stable ratio
+$\approx0.33$ per step. \emph{The conclusion of Lemma 4.5 is correct.}
+\item $G(m):=\sup_{N>M}|f^{(N)}_k(M,m)|$ has the \emph{same} decay exponent as $|f_k(M,m)|$ on
+every dyadic window up to $m=2^{13}$, and $\sum_mG(m)^2/\sum_m|f_k(M,m)|^2=1.008$. A valid
+dominating function exists; it is just not the one exhibited.
+\end{itemize}
+
+\subsection{Finding 2: the error estimates (204)--(210) inherit the singularity}
+
+\begin{finding}\label{f:error}
+$\mathrm{Error}^2(\delta,L,k,N)$ as \emph{defined} in (206) equals $+\infty$ for every $k\neq0$
+and every $N$ in the Ramond sector. The passage from (208), line 1, to (208), line 2, is
+vacuous for $k\neq0$ in both sectors. Consequently (210) --- and with it (207) --- is
+established only for $k=0$.
+\end{finding}
+
+\noindent
+The factorisation (204)--(205) pulls $|(m+\tfrac k2)\sh(\eps_M(m+k))|^2$ out of the sum and
+leaves behind the same quotient $\sh(\eps_Nm)/\sh(\eps_N(m+k))$, now inside a supremum. In the
+Ramond sector the supremum runs over a set containing an exact pole (same $m$ as above), so
+$\mathrm{Error}^2=+\infty$. In (208), line 2, the discrete supremum over $m\in\Gi$ is relaxed to
+$\sup_{x\in\mathbb R}$; since $x\mapsto x+\eps_Nk$ can be placed on a zero of $\sh$ while $x$ is
+not, that supremum is $+\infty$ for every $k\neq0$ \emph{in both sectors}. The step from (209)
+to (210) is then carried entirely by the sentence ``\emph{as long as $N$ is sufficiently large,
+we expect essentially the same behavior for $k\neq0$ because of the uniform continuity of
+$\sh$}'', which is the invalid step of Finding~\ref{f:lemma45} in supremum form.
+
+\medskip\noindent
+Measured (\texttt{os\_check2.py} [7], \texttt{os\_check3.py} [10]), $\mathrm{db}4$, $\delta=2$:
+\begin{center}\small
+\begin{tabular}{lcccc}
+\toprule
+ & $N=6$ & $N=8$ & $N=10$ & $N=12$\\
+\midrule
+$\mathrm{Error}^2$, Ramond, $k=1$ & $+\infty$ & $+\infty$ & $\ge3.9\cdot10^{12}$ & --- \\
+$\mathrm{Error}^2$, NS, $k=1$     & $1.21\cdot10^{-7}$ & $5.61\cdot10^{-10}$ & $2.35\cdot10^{-12}$ & $9.44\cdot10^{-15}$\\
+successive ratios (NS)            & \multicolumn{4}{l}{$215,\ 239,\ 249$ \quad vs.\ $2^{2\delta\cdot 2}=256$ predicted by (210)}\\
+\bottomrule
+\end{tabular}
+\end{center}
+So the \emph{conclusion} (210) is numerically correct in the Neveu--Schwarz sector, false in the
+Ramond sector, and derived by an invalid argument in both. Since the paper's own footnote~15
+already flags that the Ramond sector needs extra care with $\chi_{\Gamma_N}$, this is a natural
+place for the fix.
+
+\paragraph{What is unaffected --- and it is the part that matters downstream.}
+Remark 4.21 / eq.~(212), the $k=0$ time-evolution bound
+\[
+  \big\|\big((\tilde\ell^{(N)}_{\pm,0}-\ell_{\pm,0})_{\pm\pm}R^M_\infty(\eta_p)\big\|^2_\infty
+  \le \eps_N^{2\delta}\Big(\sup_{x}\tfrac{|\mathrm{sinc}(x)-1|^2}{|x|^{2\delta}}\Big)
+  \|\eta\|_M^2(\tfrac L\pi)^2\!\!\sum_{n\in\Gamma_{M,\pm}}\!\!\theta(\pm n)|n|^{2(1+\delta)},
+\]
+comes from the \emph{momentum-cutoff} route (201) and contains no $\sh$ at all: the sum is
+finite (over the $M$-th Brillouin zone) and no regularity of $s$ enters. I confirmed
+$\sup_x|\mathrm{sinc}(x)-1|^2/|x|^4=1/36$, attained as $x\to0$ (it follows from
+$1-x^2/6\le\mathrm{sinc}(x)\le1$). \emph{The advertised $\sim2^{-2N}$ error scaling for the
+time evolution is sound and unconditional.} This is the estimate that feeds the companion
+quantum-simulation paper; the $k\neq0$ budget from (210) is not.
+
+\section{Finding 3: what ``sufficiently regular'' actually costs}\label{sec:reg}
+
+\begin{finding}
+The hypothesis ``$s\in C^\alpha(\mathbb R)$ sufficiently regular'' is never quantified, and
+carries \emph{three different} thresholds. In terms of the Sobolev exponent $\sigma_K$ of the
+Daubechies-$K$ scaling function:
+\begin{enumerate}[label=(\alph*),leftmargin=1.9em,itemsep=1pt]
+\item $\DW\subset\mathcal D(\ell_{\pm,k})$ (needed for $\DW$ to be a core at all, p.~44) and
+$\ell^2$-domination in Lemma 4.5 both require $\sigma_K>1$;
+\item the two Cauchy--Schwarz splittings in the proof of Lemma 4.15 require $\delta>3/2$
+(second factor, since $\|\tilde\ell^{(N)}_{\pm,k}R^K_\infty(e_l)\|$ grows linearly in $k$) and
+then $\sigma_K>\delta$ (first factor, since $\hat X_{\mathrm{per}}$ is periodic and does not
+decay) --- hence $\sigma_K>3/2$;
+\item finiteness of $\|\sh(\eps_M(\,\cdot+\tfrac k2))\|_{h^{1+\delta}}$ in (207) requires
+$\sigma_K>1+\delta$; for the $\delta=2$ used to advertise the $2^{-2\delta N}$ rate this is
+$\sigma_K>3$.
+\end{enumerate}
+\end{finding}
+
+\noindent
+I constructed the Daubechies filters from scratch (spectral factorisation of
+$\cos^{2K}(\xi/2)P_K(\sin^2(\xi/2))$; orthonormality verified to $<6\cdot10^{-15}$) and measured
+$\sigma_K$ from dyadic-block $L^2$ decay of $\sh$; the values reproduce the standard
+Villemoes/Daubechies table to 3--4 digits (\texttt{os\_check4.py}).
+
+\begin{center}\small
+\begin{tabular}{lccccccccccc}
+\toprule
+$K$ & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12\\
+\midrule
+$\sigma_K$ (measured) & 1.002 & 1.416 & 1.776 & 2.098 & 2.390 & 2.661 & 2.917 & \textbf{3.165} & 3.406 & 3.641 & 3.873\\
+$K-\bar K$ (sup-envelope) & 1.336 & 1.634 & 1.910 & 2.174 & 2.431 & 2.681 & 2.927 & 3.170 & 3.409 & 3.646 & 3.881\\
+\midrule
+(a) $\sigma_K>1$      & \color{red}$\approx$ & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark\\
+(b) $\sigma_K>3/2$    & \color{red}$\times$ & \color{red}$\times$ & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark\\
+(c) $\sigma_K>3$      & \color{red}$\times$ & \color{red}$\times$ & \color{red}$\times$ & \color{red}$\times$ & \color{red}$\times$ & \color{red}$\times$ & \color{red}$\times$ & \checkmark & \checkmark & \checkmark & \checkmark\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+Three consequences worth stating in a revision:
+\begin{itemize}[leftmargin=1.4em,itemsep=1pt]
+\item $\mathrm{db}2$ is \emph{exactly borderline} ($\sigma_2=1$, so $s\notin H^1$): the wavelet
+core $\DW$ is then not contained in $\mathcal D(\ell_{\pm,k})$ and Lemma 4.5 has no content.
+The honest minimum for Section 4.2.4 is $K\ge3$, and $K\ge4$ once Lemma 4.15 is included.
+\item The advertised $\delta=2$ rate in (210) requires $K\ge9$ --- \emph{not} $K\ge2$, and not
+the ``$K\ge6$ suffices'' recorded in the earlier verification note in
+\texttt{osborne-stottmeister2023/}. Since $\mathrm{supp}({}_K s)=[0,2K-1]$, Remark 4.20's own
+constraint $\eps_M(2K-1)\sim L$ then forces a correspondingly coarser $M$: the regularity
+needed for the rate and the localisation needed for the qubit count pull against each other,
+and the paper does not resolve the trade-off.
+\item The relevant exponent differs between the two uses: the pointwise bound (109) supplies
+$K-\bar K$, whereas the $\ell^2$-sums actually need the (larger) Sobolev exponent. Using (109)
+to check the sums, as the paper does, is lossy by roughly $0.4$--$0.5$ in $K$.
+\end{itemize}
+
+\section{Finding 4: Remark 4.14 does not follow from Lemma 4.5}
+
+\noindent
+Remark 4.14 states that in the NS sector the Hilbert--Schmidt norms in (201) vanish for
+$k=0,\pm\pi/L$ (the Moebius generators), and concludes that ``\emph{a simple extension of
+Lemma 4.5 is sufficient to prove Theorem 4.11 in this case using the wavelet renormalization
+group}.''
+
+The vanishing is correct, though for a subtler reason than emptiness of the index set: for
+$k=-\pi/L$ and the $+$ chirality the constraint $\theta(n-k)\theta(-n)$ admits
+$n=-\pi/2L\in\Gamma_{\infty,-}$, and the summand vanishes there because $n-\tfrac k2=0$ kills
+both $\sin(\eps_N(n-\tfrac k2))$ and $(n-\tfrac k2)$.
+
+\begin{finding}
+The conclusion does not follow. Estimate (200) also requires the \emph{diagonal} blocks
+$(\tilde o^{(N)}-o)_{\pm\pm}=S_\pm(\tilde o^{(N)}-o)S_\pm$ applied to $R^M_\infty(\eta)$, i.e.\
+convergence on the Hardy-projected vectors $P^\mp\xi$. But $P^\pm$ does not map $\DW$ into
+$\DW$.
+\end{finding}
+
+\noindent
+$\DW=\bigcup_NR^N_\infty(\hs_{N,\pm})=\bigcup_NV_N$ is the union of the multiresolution spaces;
+a $V_M$ element has $\hat\xi(k)=\eps_M^{1/2}\sh(\eps_Mk)\hat\eta_{\mathrm{per}}(k)$ with
+$\hat\eta_{\mathrm{per}}$ periodic, so it cannot be supported on positive frequencies alone
+without vanishing. Measured relative distance of $P^+s^{(\eps_M)}$ from $V_J$
+(\texttt{os\_check3.py} [11], $\mathrm{db}4$, $M=3$): $0.353,\,0.080,\,0.0074,\,6.4\cdot10^{-4},
+\,5.5\cdot10^{-5}$ for $J=3,4,6,8,10$ --- convergent to $0$, as it must be by density, but never
+$0$.
+
+\begin{claim}[repair]
+$\ell_{\pm,k}$ and $\tilde\ell^{(N)}_{\pm,k}$ are bounded $h^1(\Gi)\to h^0(\Gi)$ \emph{uniformly
+in $N$} (their symbols are $O(|m|)$, and $(R^N_\infty)^*$ is bounded $h^1\to h^1(\Gamma_N)$ by
+the decay of $\sh$). Since $\DW$ is $h^1$-dense (the paper's own graph-norm argument, p.~44)
+and $P^\pm$ is a Fourier multiplier preserving $h^1$, strong convergence extends from $\DW$ to
+all of $h^1\ni P^\mp\xi$. This closes the remark, but it is not ``a simple extension of Lemma 4.5''.
+\end{claim}
+
+\noindent
+This also isolates an unremarked structural reason why the momentum-cutoff RG is needed: in
+that setting $P^\pm$ is diagonal in the plane-wave basis, so $\Dstd$ \emph{is} invariant and
+(200) applies verbatim. The paper motivates the switch by the Hilbert--Schmidt condition alone.
+
+\section{Finding 5: a normalisation inconsistency in Definition 4.2}
+
+\noindent
+Two incompatible normalisations of the one-particle Virasoro generator are in circulation:
+\[
+\text{(A) eq.\ (143)/(165):}\quad \ell_k(l)=-(l+\tfrac k2)p_-,
+\qquad\qquad
+\text{(B) Def.\ 4.2 (181) + (199):}\quad \ell_{\pm,k}e_n=\pm\tfrac L\pi(n\mp\tfrac k2)e_{n\mp k}.
+\]
+(B) is internally consistent --- (181), (184), (198), (199) and the estimates (200)/(201) all use
+it, and $\tilde\ell^{(N)}_{\pm,k}\to\ell_{\pm,k}$ holds in (B) --- but it is (A) that is
+compatible with the bridge formula $L_{\pm,k}=\frac L\pi\,dF_S(\ell_{\pm,k})$ used in (142),
+(145), (167), (170) and (194). The two differ by exactly $L/\pi$.
+
+\begin{finding}
+Read literally with Definition 4.2, the commutator (170) acquires the structure constant
+$(L/\pi)^2(k-k')$ instead of $\frac L\pi(k-k')$, and its central term becomes
+$(L/\pi)^2\cdot\frac1{12}n(n^2-1)$ with $n=\frac L\pi k$, i.e.\ $c=(L/\pi)^2$ rather than $c=1$.
+The same $L/\pi$ propagates into (173), (177), (178) and (194).
+\end{finding}
+
+\noindent
+Direct evaluation of the Schwinger cocycle $c_{P^\mp}(\ell_{+,k},\ell_{+,-k})$ over the finite
+strip $0<|l|<|k|$ (\texttt{os\_check5.py}), target $\frac1{12}n(n^2-1)$:
+\begin{center}\small
+\begin{tabular}{cccc}
+\toprule
+$L$ & $n$ & $(L/\pi)^2c_S$ with (A) & $(L/\pi)^2c_S$ with (B)\\
+\midrule
+$\pi$   & 3 & 2.000 & 2.000\\
+$2\pi$  & 3 & 2.000 & \color{red}8.000\\
+$5$     & 3 & 2.000 & \color{red}5.066\\
+$2\pi$  & 5 & 10.000 & \color{red}40.000\\
+\bottomrule
+\end{tabular}
+\end{center}
+The two agree iff $L=\pi$, which the paper nowhere assumes ($L$ is free throughout;
+$\eps_NL_N=L$). \emph{No convergence statement is affected} --- the factor is common to
+approximant and limit --- but the identification of the limit with the $c=1$ (resp.\ $c=\frac12$)
+Virasoro generators requires normalisation (A), so Definition 4.2 should read
+$\ell_{\pm,k}=\pm\frac{1}{2L}\sum_l(l\mp\frac k2)\,e_{l\mp k}\otimes e_l$ (equivalently, drop
+$L/\pi$ from (199)).
+
+\section{Finding 6: Theorem 6.3 rests on two unproved assertions}
+
+\noindent
+The telescoping estimates (236)/(237) reduce the statement to applying Theorem 4.16 to the
+vectors $\prod_{p<q}L_\pm(X_p)\Omega_0$. The proof then closes with:
+\begin{quote}\small
+``\emph{First, $\|\prod_{p=1}^n\!:\!(\pi_\pm(\alpha_\infty^N(L^{(N)}_\pm(X_{N,p}))))\!:\Omega_0\|$
+can be bounded uniformly in $N$ \dots\ Second, $\prod_{p=1}^nL_\pm(X_p)\Omega_0$ is given by a
+convergent sum \dots\ of Fock-space vectors with finite particle number in momentum space.}''
+\end{quote}
+
+\begin{finding}
+These two ``observations'' are exactly the decisive ingredients and neither is proved.
+\end{finding}
+
+\noindent
+They are not decorative. Theorem 4.16 gives strong convergence only on
+$\mathfrak F^{\mathrm{alg}}_{\mathrm a}(\Dstd)$, and the intermediate vectors are \emph{not} in
+that domain. Note the contrast with the unsmeared case: for fixed $k$ the off-diagonal block
+$(\ell_{\pm,k})_{\pm\mp}$ is supported on the finite strip $0<|n|<|k|$, hence \emph{finite rank},
+so $L_{\pm,k}\Omega_0$ is a finite combination of plane-wave pairs. After smearing,
+$L_\pm(X)=\frac1{2L}\sum_k\hat X_k L_{\pm,k}$ has an off-diagonal block that is
+Hilbert--Schmidt but of infinite rank, so $L_\pm(X)\Omega_0=a^\dagger G_{+-}a^\dagger\Omega_0$
+is an infinite two-particle superposition, outside
+$\mathfrak F^{\mathrm{alg}}_{\mathrm a}(\Dstd)$ and of unbounded $L_{\pm,0}$-energy.
+
+What is needed is an \emph{$N$-uniform energy bound}
+$\|:\!\pi_\pm(\alpha^N_\infty(L^{(N)}_\pm(X)))\!:\Psi\|\le C_X\|(1+L_{\pm,0})\Psi\|$, the lattice
+analogue of the Buchholz--Schulz-Mirbach / Carpi--Weiner energy bounds for smeared Virasoro
+fields. That is a theorem in its own right, and it is the main rigor debt of Section 6. The
+same gap does not affect Theorem 6.1, where the insertions are bounded elements of the CAR
+algebra and the argument is complete.
+
+\medskip\noindent
+Two smaller items in the same vicinity. Theorem 4.11 is stated with no proof at all (it is
+offered as an immediate consequence of Lemma 4.10 and (200)); and the assertion that
+$\mathfrak F^{\mathrm{alg}}_{\mathrm a}(\Dstd)$ contains a total set of analytic vectors for
+$L_{\pm,k}$ is left to the reader. The latter does hold: iterating (25) gives
+$\|(a^\dagger G_{+-}a^\dagger)^j P_{\le n}\|\le\prod_{i=0}^{j-1}(n+2i+2)\|G_{+-}\|_2^{\,j}
+\le 2^jj!\,j^{n/2}\|G_{+-}\|_2^{\,j}$, so the exponential series converges for
+$t<1/(2\|G_{+-}\|_2)$; combined with (187) for the diagonal part this gives a positive radius.
+Worth one displayed line in a revision.
+
+\section{Finding 7: the locality claim for Theorem 4.16}
+
+\noindent
+The preamble to Lemma 4.15 states that combining the two renormalisation groups exploits
+convergence in $\pi_\pm$ ``\emph{while, at the same time, preserving localization in real space
+in the sense of Proposition 3.6}.''
+
+\begin{finding}
+This is not established. Proposition 3.6 is a statement about the \emph{wavelet} RG. In
+Theorem 4.16 the fermion algebra is transported by the \emph{momentum-cutoff} maps
+$\alpha^N_\infty$, which by the paper's own eq.~(112) send lattice-localised operators to
+operators that are not localised. The wavelet RG enters only through the smearing functions
+$S^M_N(X)$, and inspection of the proof of Lemma 4.15 shows its role there is summability of
+the $k$-sum (the weights $(1+|\eps_Mk|)^{\pm2\delta}$), not locality.
+\end{finding}
+
+\noindent
+Compounding this, the approximants used in Theorem 4.16 are the \emph{modified} ones (197),
+whose real-space form (159)--(162) is a convolution with $\widehat{\chi_{\Gamma_N}}$ --- a
+Dirichlet kernel with only $O(1/|x|)$ decay. What is true, and worth saying instead, is that
+the smearing function is wavelet-localised at scale $M$; the observable is quasi-local only up
+to Dirichlet tails. The distinction matters for the quantum-simulation reading of these results,
+where locality of the simulated operator is the whole point.
+
+\section{Finding 8: minor corrigenda}
+
+\begin{enumerate}[leftmargin=1.7em,itemsep=2pt]
+\item \textbf{(25), p.~15.} ``$\|aG_{+-}aP_{\le n}\|\le n\|G_{+-}\|_2$'' should read
+$\|aG_{-+}aP_{\le n}\|\le n\|G_{-+}\|_2$ --- which is how it is used in (200) and in (22)/(24).
+\item \textbf{Lemma 3.7, p.~27.} The display asserts ``$=$'' where ``$\le$'' is meant. Also
+$\max\{e^C,\pi^{-K_j}\}=e^C$ identically, since $q_j\ge1$ forces $K_j\ge0$; and case 3 of the
+proof claims $2^{MK_j}\le\pi^{-K_j}(1+|l|)^{K_j}$, which fails throughout
+$2^M<|l|<\pi2^M-1$. The correct step is simply $2^{MK_j}\le(1+|l|)^{K_j}$, i.e.\ drop
+$\pi^{-K_j}$.
+\item \textbf{(204)/(205), p.~53.} The factorisation divides by $(m+\tfrac k2)$, which vanishes
+at $m=-k/2$ whenever $k\in\frac{2\pi}{L}\mathbb Z$ (removable, since $\sin$ vanishes there too).
+The Sobolev norm in (205)--(207) is written with $\sh(\eps_M(\,\cdot+\tfrac k2))$ while (204)
+carries $\sh(\eps_M(\,\cdot+k))$.
+\item \textbf{(213), p.~56.} From $\binom{2j}{j}^{1/2}\le2^j$ and
+$\prod_{i=0}^{j-1}(a+ib)\le a^j(2j-1)!!\le a^j2^jj!$ with $a=|m|+\tfrac12|k|$, $b=|k|\le2a$, the
+bound is $(4a)^jj!$, not $(2a)^jj!$; (213) should then carry $\frac{2L}{\pi}(|m|+\frac12|k|)t$
+in place of $\frac L\pi(|m|+\frac12|k|)t$. The conclusion (a positive radius of convergence) is
+unchanged.
+\item \textbf{§4.2.2.} The lattice Virasoro relation (146) and the $O(\eps_N^2)$ remainders
+(147) are computed for the \emph{unmodified} approximants; the modified ones (160)/(162)
+carrying $\chi_{\Gamma_N}$ --- which are the ones used in Theorem 4.11 and 4.16 --- are only
+argued to agree asymptotically. Their finite-$N$ algebra is not checked. Harmless for the
+theorems, but the sentence ``we recover the original Koo--Saleur formulas for $N\to\infty$''
+is doing more work than it looks.
+\end{enumerate}
+
+\section*{Verdict}
+
+\noindent
+Theorems A, B and C (= 4.11, 6.1, 6.3, with 4.6, 4.16, 5.1) are, as far as I can tell, true, and
+the architecture --- one-particle $\to$ Fock $\to$ correlation functions, with two
+renormalisation groups doing two different jobs --- is sound and, in my view, the right way to
+do this. But the earlier ``no logical gaps'' verdict does not survive contact with the details.
+Ranked by what a referee should have caught:
+
+\begin{enumerate}[leftmargin=1.7em,itemsep=2pt]
+\item \textbf{The $\sh$-quotient (Findings 1--2).} An invalid step, used three times, that is
+\emph{false} rather than merely unjustified, and that makes the advertised $k\neq0$ error
+estimate infinite in the Ramond sector. Lemma 4.5 is repairable in a paragraph using the
+paper's own Lemma 3.7; (210) needs genuine rewriting for $k\neq0$.
+\item \textbf{Theorem 6.3 (Finding 6).} Two unproved assertions carry the proof, and one of them
+(an $N$-uniform energy bound) is a real theorem.
+\item \textbf{Regularity (Finding 3).} ``Sufficiently regular'' hides $K\ge3$, $K\ge4$ and
+$K\ge9$ in three different places. The $K\ge9$ is the interesting one: the paper's headline
+practical claim --- explicit error bounds for quantum simulation --- is stated at $\delta=2$,
+which no Daubechies wavelet below order $9$ supports along the wavelet route.
+\item \textbf{Findings 4, 5, 7.} Each is a paragraph-sized fix, but 5 would read as a factual
+error about the central charge to anyone who takes Definition 4.2 at face value.
+\end{enumerate}
+
+\noindent
+Net: the paper is right, and it is under-proved in a way that a careful revision could fix in
+about three pages. The one thing I would not simply patch is (210): the honest statement is
+that the wavelet route gives an explicit rate only for $k=0$, and that the clean, unconditional
+error bound available today is the momentum-cutoff estimate (212).
+
+\appendix
+\section{Numerical protocol}
+
+\noindent
+All checks are in \texttt{lattice\_cft/numerics/} (pure \texttt{numpy}, no external wavelet
+library). Conventions: $L=\pi$, so $\Gamma_{\infty,+}=\mathbb Z$,
+$\Gamma_{\infty,-}=\mathbb Z+\tfrac12$, $\eps_N=2^{-N}\pi$;
+$m_0(\xi)=2^{-1/2}\sum_nh_ne^{-in\xi}$, $\sh(\xi)=\prod_{j\ge1}m_0(2^{-j}\xi)$ truncated
+adaptively ($J=\lceil\log_2\max|\xi|\rceil+32$, the tail being $1+O(2^{-J}|\xi|)$).
+
+\begin{itemize}[leftmargin=1.4em,itemsep=1pt]
+\item \texttt{os\_check.py} --- filter sanity ($\sum h_n=\sqrt2$, $\langle h,h(\cdot-2k)\rangle=\delta$
+to $<10^{-12}$), order of the zeros of $\sh$ at $2\pi n$, the $\sh$-quotient in both sectors.
+\item \texttt{os\_check2.py} --- cross-check of the product form against the quotient form of
+$f^{(N)}_k$ ($<2\cdot10^{-14}$ where both are defined); failure of the stated dominating
+function; $\ell^2$-convergence of $f^{(N)}_k\to f_k$; $2^{-KN}$ decay of the resonance spikes;
+$\mathrm{Error}^2$ in the Ramond sector.
+\item \texttt{os\_check3.py} --- decay exponents; existence of a valid dominating function;
+$\mathrm{Error}^2$ in the NS sector; distance of $P^+\!s^{(\eps_M)}$ from $V_J$.
+\item \texttt{os\_check4.py} --- Daubechies filters for $K=2,\dots,12$ by spectral factorisation
+(orthonormality $<6\cdot10^{-15}$); Sobolev exponents $\sigma_K$ from dyadic-block $L^2$ decay,
+reproducing the literature values ($\sigma_2=1.000$, $\sigma_3=1.415$, $\sigma_4=1.776$,
+$\sigma_6=2.386$, $\sigma_8=2.917$) to 3--4 digits.
+\item \texttt{os\_check5.py} --- Schwinger cocycle over the finite strip, both normalisations.
+\end{itemize}
+
+\end{document}
