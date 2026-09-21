@@ -52,13 +52,30 @@ dossier_images/
 /build/free_fermion_cft_v5.pdf
 /build/free_fermion_cft_v5.log
 /build/free_fermion_cft_v5.out
+/build/mainrefs.pdf
+/build/mainrefs.log
+/build/mainrefs.out
 /build/zini-wang-comparison.pdf
 /build/zini-wang-comparison.log
 /build/zini-wang-comparison.out
 /critical-reread.pdf
+/critical-reread.log
+/critical-reread.out
 /diff_v4_v5.pdf
+/diff_v4_v5.log
+/diff_v4_v5.out
+/free_fermion_cft_v4.pdf
+/free_fermion_cft_v4.log
+/free_fermion_cft_v4.out
 /free_fermion_cft_v5.pdf
+/free_fermion_cft_v5.log
+/free_fermion_cft_v5.out
+/mainrefs.pdf
+/mainrefs.log
+/mainrefs.out
 /zini-wang-comparison.pdf
+/zini-wang-comparison.log
+/zini-wang-comparison.out
 
 # --- hardened after the remote dry run: reference dirs with a suffix, cited-PDF
 # --- trees, and dossier builds that embed page images of published papers
