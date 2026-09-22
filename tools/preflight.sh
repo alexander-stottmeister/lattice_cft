@@ -47,8 +47,10 @@ echo "1. paths that were committed and later removed"
 # These stay in the history and stay readable after a flip. That is not automatically wrong:
 # what matters is whether their CONTENT may be published. This repository deliberately
 # untracked some build output, so this step only lists them: it has no failing branch at
-# all. A removed path that is genuinely private is caught by step 3, which searches every
-# object in the history and does fail.
+# all. A removed path whose NAME is on step 3's private list is caught there, over every
+# object in the history. Step 3 reads names and not content, and step 4 greps only the
+# tracked tree, so a deleted file with an innocuous name and private content is caught by
+# nobody: the list this step prints is for a human to read.
 git log --all --diff-filter=A --name-only --format= | sed '/^$/d' | sort -u > "$TMP/added"
 git ls-files | sort -u > "$TMP/tracked"
 comm -23 "$TMP/added" "$TMP/tracked" > "$TMP/gone"
@@ -75,8 +77,14 @@ echo "3. nothing private ever entered the history"
 # Only genuinely private material belongs here: third-party copyrighted PDFs, reference
 # corpora, page images, correspondence. Superseded build output is not private, it is stale,
 # and step 1 reports it instead.
+#
+# TRAP: these match the PATH NAME and never the content, so the private material has to be
+# recognisable from its name. Anchor every directory and prefix pattern with (^|/) rather
+# than ^ or a bare slash: '^refs/' misses sub/refs/x, '/evidence/' misses a top-level
+# evidence/x because there is no parent to supply the slash, and '^PRIVATE' misses
+# sub/PRIVATE-x. Review planted exactly those and step 3 passed.
 BAD=""
-for p in 'Osborne und Stottmeister' '^refs/' '/evidence/' 'citation_screenshot' 'dossier' '^PRIVATE'; do
+for p in 'Osborne und Stottmeister' '(^|/)refs/' '(^|/)evidence/' 'citation_screenshot' 'dossier' '(^|/)PRIVATE'; do
   HIT=$(git rev-list --objects --all | awk '{print $2}' | grep -E "$p" | sort -u || true)
   [ -n "$HIT" ] && BAD="$BAD$HIT\n"
 done
