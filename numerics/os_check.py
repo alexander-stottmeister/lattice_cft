@@ -1,5 +1,5 @@
 """
-Adversarial numerical checks on Osborne-Stottmeister 2023 (CMP 405, 219),
+Adversarial numerical checks on Osborne-Stottmeister 2023 (CMP 398, 219-289),
 "Conformal field theory from lattice fermions", Section 4.2.4.
 
 Conventions (matching the paper):
