@@ -44,7 +44,7 @@ The chain of versions is:
 
 The middle step matters and is not documented anywhere else, so it is recorded here.
 `free_fermion_cft_v4.tex` is a post-publication draft that was never released. It differs from
-the arXiv v3 source in four places:
+the arXiv v3 source in four places of content:
 
 1. two typographical corrections in the second-quantisation formulas, `a†Aa → a†Ga` and
    `½Ψ*AΨ → ½Ψ*GΨ`;
@@ -54,6 +54,9 @@ the arXiv v3 source in four places:
 3. one rewritten sentence in the definition of the local one-particle spaces.
 
 The version of record reads "2L-periodized" at point 2; the draft reads "2L-(anti)periodized".
+One further difference against arXiv v3 is not the authors' but ours: the date `\today` was
+replaced by the fixed date `21 June 2024`, that of the build this draft was taken from, so that the
+file compiles reproducibly. Nothing else in it was touched.
 The changelog `CHANGES-v4-to-v5.md` documents only the step from this draft to the revision, so
 a reader comparing the revision against the published article will meet these four differences
 in addition to everything the changelog lists. A `latexdiff` of the draft against the revision
