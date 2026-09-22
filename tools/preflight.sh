@@ -17,8 +17,12 @@ SLUG=alexander-stottmeister/lattice_cft
 TMP=$(mktemp -d)
 CLONE=$TMP/clone
 FAIL=0
+WARN=0
 pass() { printf '  [ ok ] %s\n' "$1"; }
 fail() { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
+# A warning does not block, but it must reach the closing verdict rather than scroll past:
+# it means the audit is sound and yet does not describe what would actually become public.
+warn() { printf '  [warn] %s\n' "$1"; WARN=$((WARN+1)); }
 note() { printf '         %s\n' "$1"; }
 trap 'rm -rf "$TMP"' EXIT
 
@@ -126,14 +130,24 @@ echo "7. the pruned commits are still gone from the remote"
 # and gh --jq prints that error JSON to stdout. Testing for "Not Found", or for empty
 # output, reports the opposite of the truth. Test for a 40-hex sha.
 if command -v gh >/dev/null 2>&1; then
-  # Positive control first: ask for a commit that MUST exist. Without it, an unauthenticated
-  # gh or a network failure answers nothing and every line below reads as "not served".
-  CTL=$(gh api "repos/$SLUG/commits/$(git rev-parse HEAD)" --jq '.sha' 2>&1 || true)
-  if printf '%s' "$CTL" | grep -qE '^[0-9a-f]{40}$'; then
-    pass "positive control: the API returns HEAD, so a negative answer below means something"
+  # Positive control first. Without it, an unauthenticated gh or a network failure answers
+  # nothing and every line below reads as "not served".
+  # Ask the API for its OWN tip, by the ref name HEAD, which GitHub resolves to the default
+  # branch. Two traps this avoids. Asking for the local HEAD's sha cannot tell an unreachable
+  # API from a commit that has simply not been pushed yet, and running the audit before
+  # pushing is a plausible moment. And git ls-remote is no help here: this script runs inside
+  # a clone of the working copy, so its origin is a local path, not GitHub.
+  TIP=$(gh api "repos/$SLUG/commits/HEAD" --jq '.sha' 2>&1 || true)
+  if printf '%s' "$TIP" | grep -qE '^[0-9a-f]{40}$'; then
+    pass "positive control: the API serves its own tip, so a negative answer below means something"
+    if [ "$TIP" != "$(git rev-parse HEAD)" ]; then
+      warn "the remote tip is $(printf '%s' "$TIP" | cut -c1-7), not this clone's HEAD"
+      note "steps 7 and 9 describe the remote; every other step describes this unpushed"
+      note "working copy. Push, then re-run, before treating this as a go-ahead."
+    fi
   else
-    fail "positive control failed: the API did not return HEAD, so step 7 is inconclusive"
-    note "$(printf '%s' "$CTL" | head -c 120)"
+    fail "positive control failed: the API did not serve its own tip, so step 7 is inconclusive"
+    note "$(printf '%s' "$TIP" | tr '\n' ' ' | head -c 160)"
   fi
   for sha in 69c2afa a66065d 8b4a370; do
     OUT=$(gh api "repos/$SLUG/commits/$sha" --jq '.sha' 2>&1 || true)
@@ -176,5 +190,11 @@ note "audit, then flip, then enable Pages. Never prune before a push: a fetch or
 note "rewrites the remote-tracking reflog and re-anchors unreachable objects."
 
 echo
-if [ "$FAIL" -eq 0 ]; then echo "PASS: no blocking finding."; else echo "FAIL: $FAIL blocking finding(s)."; fi
+if [ "$FAIL" -ne 0 ]; then
+  echo "FAIL: $FAIL blocking finding(s)."
+elif [ "$WARN" -ne 0 ]; then
+  echo "PASS with $WARN warning(s): no blocking finding, but read them before flipping."
+else
+  echo "PASS: no blocking finding."
+fi
 exit "$FAIL"
