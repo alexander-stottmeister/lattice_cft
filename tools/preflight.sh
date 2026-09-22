@@ -46,8 +46,9 @@ echo
 echo "1. paths that were committed and later removed"
 # These stay in the history and stay readable after a flip. That is not automatically wrong:
 # what matters is whether their CONTENT may be published. This repository deliberately
-# untracked some build output, so the check lists them and fails only if one is on the
-# private list of step 3.
+# untracked some build output, so this step only lists them: it has no failing branch at
+# all. A removed path that is genuinely private is caught by step 3, which searches every
+# object in the history and does fail.
 git log --all --diff-filter=A --name-only --format= | sed '/^$/d' | sort -u > "$TMP/added"
 git ls-files | sort -u > "$TMP/tracked"
 comm -23 "$TMP/added" "$TMP/tracked" > "$TMP/gone"
