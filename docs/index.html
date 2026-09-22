@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conformal field theory from lattice fermions &mdash; interactive companion</title>
+<meta name="description" content="Interactive companion to a critical re-reading and revision of Osborne and Stottmeister, Conformal Field Theory from Lattice Fermions.">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<header>
+  <h1>Conformal field theory from lattice fermions</h1>
+  <p>An interactive companion to the <a href="pdf/free_fermion_cft_v5.pdf">revised manuscript</a>,
+     the <a href="pdf/critical-reread.pdf">eight-finding audit</a> that prompted it, and the
+     <a href="pdf/zini-wang-comparison.pdf">note on the Zini&ndash;Wang comparison</a>.
+     Reference pages: <a href="reference/">status, notation, definitions and the results index</a>.</p>
+  <p>Every curve here is computed in your browser from the same Daubechies filters the paper uses.
+     Nothing is a stored picture, no third-party script is loaded, and the last section lets you
+     check the computation against the values produced with numpy.</p>
+  <p id="status">loading&hellip;</p>
+</header>
+<div class="layout">
+  <nav><h2>Results</h2><ol id="nav-list"></ol></nav>
+  <main id="content"></main>
+</div>
+<footer>
+  <p>This is an experimental, AI-assisted open-science project, and nothing in it has been
+     refereed. Read every statement as a claim under verification.
+     Documents CC BY 4.0; code MIT. See the
+     <a href="https://github.com/alexander-stottmeister/lattice_cft">repository</a>.</p>
+</footer>
+<script type="module">
+  import { start } from './assets/main.js';
+  start().catch((e) => {
+    document.querySelector('#status').innerHTML =
+      '<span class="err">failed to start: ' + e.message + '</span>';
+  });
+</script>
+</body>
+</html>
