@@ -89,6 +89,10 @@ else fail "a tracked file carries one of these"; echo "$HIT" | sed 's/^/        
 
 echo
 echo "5. binaries: metadata as well as page content"
+# TRAP: a PDF can be clean on every rendered page and still carry a local path, an author
+# or a producer string in its metadata and its object streams, so a binary has to be read as
+# a binary and not through pdftotext alone. Both are checked below, and the SVGs separately:
+# a plotting library writes its own name, and sometimes a source path, into a comment.
 MET=$(for f in docs/pdf/*.pdf; do strings "$f" | grep -iE "$P_HOME|$P_WS|$P_MAIL" || true; done)
 if [ -z "$MET" ]; then pass "no local path or address in any PDF's metadata or streams"
 else fail "a PDF embeds a local path or address"; echo "$MET" | sed 's/^/         /'; fi
