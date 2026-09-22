@@ -183,15 +183,23 @@ def main():
     # docs/reference/ has no index and results.md is served as plain text.
     titles = {"README": "Reference", "status": "Status", "notation": "Notation and conventions",
               "definitions": "Definitions", "results": "Results index"}
+    rendered, missing = 0, []
     for stem, title in titles.items():
         src = os.path.join(REF, stem + ".md")
         if not os.path.exists(src):
+            missing.append(stem + ".md")
             continue
         body = md_to_html(open(src, encoding="utf-8").read())
         out = "index.html" if stem == "README" else stem + ".html"
         with open(os.path.join(REF, out), "w", encoding="utf-8") as f:
             f.write(html_page(title + " \u2014 lattice CFT", body))
-    print("  %d reference pages rendered to HTML" % len(titles))
+        rendered += 1
+    # Report what was rendered, not how many pages are expected: printing len(titles) said
+    # five however many sources were actually present, so a page that had gone missing was
+    # reported as rendered. A missing source is named rather than passed over in silence.
+    print("  %d of %d reference pages rendered to HTML" % (rendered, len(titles)))
+    if missing:
+        print("  NOT rendered, source absent: %s" % ", ".join(sorted(missing)))
 
 
 if __name__ == "__main__":
