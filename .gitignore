@@ -85,3 +85,10 @@ additional_references*/
 
 # third-party papers (reference-manager exports and extracts); kept on disk only
 /Osborne und Stottmeister - 2023 - Conformal Field Theory from Lattice Fermions.pdf
+
+# --- deliberate exception: the three reader-facing PDFs are tracked ---
+# The policy elsewhere is that a PDF rebuilt from a .tex beside it stays out of git. These
+# three do not sit beside their sources: they are built into docs/pdf/ by tools/build_pdfs.sh
+# with SOURCE_DATE_EPOCH fixed, so the committed files are byte-reproducible, and they are
+# tracked so that the README's links work and a clone is self-contained. 1.9 MB in total.
+!docs/pdf/*.pdf
