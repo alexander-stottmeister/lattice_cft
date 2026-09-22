@@ -289,13 +289,35 @@ $\hfil\widetilde{}\hfil$\crcr\noalign{\kern1.5pt}}}}}
   markings,
   mark=at position #1 with {\arrow{latex}}},postaction={decorate}}}
 
-\title{Conformal field theory from lattice fermions}
+\title{Conformal field theory from lattice fermions\\[0.25cm]
+\large\normalfont Revised version of Commun.\ Math.\ Phys.\ \textbf{398} (2023) 219--289}
 \author{Tobias J. Osborne${}^{1}$, Alexander Stottmeister${}^{1}$}
 \date{
 \small{${}^{1}$ Institut f\"ur Theoretische Physik, Leibniz Universit\"at Hannover
 \\Appelstra\ss e 2, 30167 Hannover, Germany} \\[0.5cm]
-\today}
+22 September 2026}
 \maketitle
+
+\begin{center}
+\begin{minipage}{0.9\textwidth}
+\small
+\noindent\textbf{About this version.} This is a revised version of T.~J.~Osborne and
+A.~Stottmeister, \emph{Conformal field theory from lattice fermions}, Commun.\ Math.\ Phys.\
+\textbf{398} (2023) 219--289, \texttt{arXiv:2107.13834}, which is published open access under
+CC~BY~4.0; it is not the version of record, and it should be cited as a revision rather than in
+its place. No theorem statement has been changed. What has changed is that the regularity
+hypotheses, left as ``sufficiently regular'' in the published version, are now quantified once
+and for all in Definition \ref{def:regularity}; that several proofs have been corrected or
+supplied, among them those of Lemma \ref{lem:KSconv}, Theorem \ref{thm:KSconvc},
+Lemma \ref{lem:U1cur1pconv} and Theorem \ref{thm:corapproxvir}, the last of which is now
+unconditional by Proposition \ref{hyp:energybound}; and that quantitative statements --- rates,
+domains and an explicit error budget for quantum simulation --- have been added throughout. The
+individual changes are itemised in \texttt{CHANGES-v4-to-v5.md}, and the findings that prompted
+them in \texttt{critical-reread.pdf}, both in the accompanying source repository, whose
+\texttt{README} also records how this revision was prepared.
+\end{minipage}
+\end{center}
+
 \begin{abstract}
 We provide a rigorous lattice approximation of conformal field theories given in terms of lattice fermions in 1+1-dimensions, focussing on free fermion models and Wess-Zumino-Witten models. To this end, we utilize a recently introduced operator-algebraic framework for Wilson-Kadanoff renormalization. In this setting, we prove the convergence of the approximation of the Virasoro generators by the Koo-Saleur formula. From this, we deduce the convergence of lattice approximations of conformal correlation functions to their continuum limit. In addition, we show how these results lead to explicit error estimates pertaining to the quantum simulation of conformal field theories.
 \end{abstract}
@@ -512,7 +534,7 @@ we can recover the structure of a low-energy scaling limit (the extension proper
 \end{figure}
 (Such structures are also achieved in the operator-algebraic renormalization of a scalar lattice field \cite{MorinelliScalingLimitsOf}.)
 
-It is worth pointing out that such a structure is not immediately available for the operator-algebraic renormalization of (free) massless chiral lattice fermions in 1+1-dimensions considered here, where the finitely renormalized states $\omega^{(N)}_{M}$ are not pure (due to the entanglement of the chiral halves) in contrast with their scaling limit (given by the Hardy projection).
+It is worth pointing out that such a structure is not immediately available for the operator-algebraic renormalization of (free) massless chiral lattice fermions in 1+1-dimensions considered here. The obstruction, however, is not the failure of the finitely renormalized states $\omega^{(N)}_{M}$ to be pure. What the connecting unitaries $\phi^{N}_{M}$ require is that the GNS representations of the $\omega^{(N)}_{M}$ carry a common multiplicity --- this is the precise content of the Stone-von Neumann-type assumption made above --- and for a quasi-free state on a finite lattice that multiplicity equals $2^{m}$, where $m$ is the number of eigenvalues of the symbol lying strictly between $0$ and $1$. What is at issue is therefore the \emph{constancy} of $m$ in $M$, and not its vanishing. On the chiral subalgebra $m$ is constant at every finite $M$, so the connecting unitaries do exist at all finite scales; it collapses only in the limit $M\rightarrow\infty$, and then only for the momentum-cutoff renormalization group of Section \ref{sec:momcut}, the wavelet renormalization group of Section \ref{sec:waveletrg} leaving $m$ constant up to and including the limit. The mechanism behind the mixedness is indeed the entanglement of the chiral halves, and it is quantitative: by \eqref{eq:Fmassless} and $p_{\pm} = \tfrac{1}{2}(\mathds{1}_{2}\pm\sigma_{y})$ one has $\|[P^{(+)}_{\lambda_{N}=0}(k),p_{\mp}]\| = \tfrac{1}{2}|\sin(\tfrac{1}{2}\vep_{N}k)|$, so that the chiral restriction of the lattice vacuum is mixed with an extensive entropy, of density $2\ln2-1$ per site, carried by the modes at the boundary of the Brillouin zone and of order $(\vep_{N}k)^{2}$ on the modes that survive the scaling limit.\footnote{These statements, and the closed forms behind them, are proved in the companion note \texttt{zini-wang-comparison.tex} of the same source directory: Corollary 3.2 there gives the criterion, Theorem 4.1 and Corollary 5.1 the collapse at $M=\infty$, and Corollary 5.2 the entropy density.}
 
 An important difference of our approach with the construction by Zini and Wang is that our renormalized Hilbert spaces $\cH_{M}^{(N)}$ and the connecting unitaries $\phi^{N}_{M}$ are not necessarily associated with energy bounds, and indeed can be far more general, e.g., in the wavelet approach formulated in \cite{StottmeisterOperatorAlgebraicRenormalization} and in Section \ref{sec:waveletrg} the parameter $N$ is associated with a spatial resolution, while energy bounds are similar to the momentum-cutoff approach, see \cite{MorinelliScalingLimitsOf} and Section \ref{sec:momcut}. This flexibility enables us to overcome a major challenge facing the construction of Zini and Wang's strong scaling limit, namely that the addition of irrelevant terms to the lattice discretizations, resulting in lattice-scale artifacts, makes it difficult if not impossible to find connecting unitaries. 
 
@@ -2750,7 +2772,7 @@ Consequently the exponent in \eqref{eq:smearedrate} improves to $\min\{\delta,2\
 As before, we use the preceding lemma to deduce the following result on the convergence of the KS approximants (cf.~\eqref{eq:noquantconv}).
 \begin{thm}[Convergence of smeared KS approximants for $\pi_{{\color{blue}\pm}}$]
 \label{thm:KSconvsmeared}
-Let $s$ be a compactly supported orthonormal Daubechies scaling function which is $\tfrac{3}{2}$-regular in the sense of Definition \ref{def:regularity} --- by Remark \ref{rem:regularityvalues} this holds for $K\geq4$ --- and $\tfrac{5}{2}$-regular for the rate \eqref{eq:latviraconvsmearedrate}, i.e.~$K\geq6$; and let $X\in\fl(\Lambda_{M},\C)$ for some $M\in\N_{0}$. Then, the smeared KS approximants, $L^{(N)}_{\pm}(S^{M}_{N}(X))$, converge strongly to the continuum Virasoro generators, $L_{\pm}(S^{M}_{\infty}(X))$, on the dense domain $\fF^{\alg}_{\ua}(\cD_{\std})\subset\fF_{\ua}(\fh^{(\pm)}_{\infty,{\color{blue}\pm}})$ spanned by anti-symmetric Fock vectors with finitely many one-particle excitations in $\cD_{\std}$ (finite $\cD_{\std}$-particle number):
+Let $s$ be a compactly supported orthonormal Daubechies scaling function which is $\tfrac{3}{2}$-regular in the sense of Definition \ref{def:regularity} --- by Remark \ref{rem:regularityvalues} this holds for $K\geq4$ --- and $\tfrac{5}{2}$-regular for the rate \eqref{eq:latviraconvsmearedrate}, i.e.~$K\geq7$; and let $X\in\fl(\Lambda_{M},\C)$ for some $M\in\N_{0}$. Then, the smeared KS approximants, $L^{(N)}_{\pm}(S^{M}_{N}(X))$, converge strongly to the continuum Virasoro generators, $L_{\pm}(S^{M}_{\infty}(X))$, on the dense domain $\fF^{\alg}_{\ua}(\cD_{\std})\subset\fF_{\ua}(\fh^{(\pm)}_{\infty,{\color{blue}\pm}})$ spanned by anti-symmetric Fock vectors with finitely many one-particle excitations in $\cD_{\std}$ (finite $\cD_{\std}$-particle number):
 \begin{align}
 \label{eq:latviraconvsmeared}
 \lim_{N\rightarrow\infty}\|(:\!\pi_{{\color{blue}\pm}}(\alpha^{N}_{\infty}(L^{(N)}_{\pm}(S^{M}_{N}(X)))\!)\!: - L_{\pm}(S^{M}_{\infty}(X)))a^{\dagger}(\xi_{1})\dots a^{\dagger}(\xi_{n})\Omega_{0}\| & = 0,

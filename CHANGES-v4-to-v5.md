@@ -1,26 +1,35 @@
 # `free_fermion_cft_v4.tex` → `free_fermion_cft_v5.tex`
 
 Revision implementing the eight findings of `critical-reread.pdf`. The source compiles clean
-(0 errors, 0 undefined references/citations; 89 pp vs. 72 pp).
+(0 errors, 0 undefined references/citations; 97 pp vs. 72 pp).
 `diff_v4_v5.pdf` is a `latexdiff` rendering — deletions struck through in red, additions
 underlined in blue.
 
 > **Numbering.** Equation numbers below refer to the **published version (v4)**, as in
-> `critical-reread.pdf`; *theorem/lemma/remark* numbers are the **v5** ones (they shift by one or
-> two because of the new Corollary 3.8, Definition 3.10, Remark 3.11, Lemma 3.12,
-> Corollary 3.14, Remarks 3.5/3.19/3.21, Remarks 4.3/4.7 and Hypothesis 6.4; Theorem 4.6 of v4 is
-> Theorem 4.8 in v5). Displays new in v5 are marked
+> `critical-reread.pdf`; *theorem/lemma/remark* numbers are the **v5** ones, as compiled in
+> `build/free_fermion_cft_v5.aux`. They shift by up to nine against v4 because of the statements
+> newly inserted in v5: Remarks 3.5 and 3.8, Corollary 3.10, Definition 3.12, Remark 3.13,
+> Lemma 3.14, Corollary 3.15, Remarks 3.20 and 3.22, Remarks 4.2, 4.4 and 4.8, Lemma 4.12,
+> Remark 4.13, Lemma 4.17, Corollary 4.18, Lemma 4.19, Remark 4.24, Lemma 4.28, Theorem 4.29,
+> Remarks 4.30, 4.32 and 4.33, Lemma 5.1, Remark 5.3, Proposition 6.3, Remark 6.4 and
+> Proposition 6.6. The statements the findings concern map as follows.
+>
+> | v4 | 3.6 | 3.7 | 3.8 | 3.11 | 3.12 | 4.2 | 4.3 | 4.5 | 4.6 | 4.10 | 4.11 | 4.14 | 4.15 | 4.16 | 4.20 | 5.1 | 6.3 |
+> |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+> | v5 | 3.7 | 3.9 | 3.11 | 3.18 | 3.19 | 4.3 | 4.5 | 4.7 | 4.9 | 4.15 | 4.16 | 4.22 | 4.23 | 4.25 | 4.34 | 5.2 | 6.5 |
+>
+> Displays new in v5 are marked
 > *(v5)*.
 
 **No theorem statement changed.** Theorems A, B, C and 4.6/4.11/4.16/5.1/6.1/6.3 (v4 numbering) are as before,
 with hypotheses now quantified and one previously implicit ingredient of Theorem 6.3 promoted to
-a stated hypothesis.
+a stated proposition and proved (Proposition 6.6 of v5).
 
 ---
 
 ## 1. The `ŝ`-quotient (Findings 1 & 2) — the substantive fix
 
-**Where.** Proof of Lemma 4.6 (`lem:KSconv`); the whole "Error estimates" paragraph.
+**Where.** Proof of Lemma 4.7 (`lem:KSconv`); the whole "Error estimates" paragraph.
 
 **Problem.** The finite product `∏_{j=1}^{N-M} m₀(ε_{M+j}(m+k))` was rewritten as
 `ŝ(ε_M(m+k))/ŝ(ε_N(m+k))` and the quotient bounded by a constant "because of the uniform
@@ -32,13 +41,13 @@ supremum defining `Error²(δ,L,k,N)` is `+∞` for every `k≠0`.
 **Fix.**
 
 - The product is **never** converted to a quotient: the third display of the proof of
-  Lemma 4.6, the definition of `f_k^{(N)}(M,m)`, and the whole error paragraph now carry the
+  Lemma 4.7, the definition of `f_k^{(N)}(M,m)`, and the whole error paragraph now carry the
   product form, with a sentence explaining why immediately after it.
-- **New Corollary 3.8** after Lemma 3.7 records what is actually needed: `P_J ≤ 1`, `P_J` is
+- **New Corollary 3.10** after Lemma 3.9 records what is actually needed: `P_J ≤ 1`, `P_J` is
   `2^{J+1}π`-periodic, `P_J(l) ≤ C_K(1+|l|)^{-K+𝒦_j}` **for `|l| ≤ 2^Jπ` only**, and
   `|ŝ(2^{-J}l)| P_J(l) = |ŝ(l)|`. The restriction to the fundamental domain is flagged
   explicitly — this is exactly what the old argument silently ignored.
-- **New Lemma 3.12 (uniform majorant), with full proof**, supplying the `N`-independent
+- **New Lemma 3.14 (uniform majorant), with full proof**, supplying the `N`-independent
   `ℓ²`-majorant that the old argument lacked:
   `|ŝ(2^{-J}l − h)| P_J(l) ≤ C(1 + 2^{Jρ}|h|^K)(1+|l|)^{-ρ}`, `ρ := K − 𝒦_j`, for all `J`,
   all `l ∈ ℝ` and all `|h| ≤ π/2`. Neither factor decays on its own beyond the Brillouin zone —
@@ -46,20 +55,20 @@ supremum defining `Error²(δ,L,k,N)` is `+∞` for every `k≠0`.
   `P_J` is of order one outside `[−2^Jπ, 2^Jπ)` only near multiples of `2^{J+1}π`, and exactly
   there `ŝ(2^{-J}l − h)` sits within `|h|` of an order-`K` zero of `ŝ`. Ingredients: the
   factorisation `ŝ(ξ) = (e^{-iξ/2} sinc(ξ/2))^K Λ(ξ)` with `|Λ| ≤ e^C(1+|ξ|)^{𝒦_j}` (obtained by
-  letting `M → ∞` in the proof of Lemma 3.7) and a three-case analysis
+  letting `M → ∞` in the proof of Lemma 3.9) and a three-case analysis
   (`|l| ≤ 2^Jπ`; `|v| ≥ 2|h|`; `|v| < 2|h|`).
-- **Corollary 3.13** specialises this to `g_k(M,m) = C(1+(L|k|)^K 2^{-Mρ})|m+k/2|(1+ε_M|m+k|)^{-ρ}`,
+- **Corollary 3.15** specialises this to `g_k(M,m) = C(1+(L|k|)^K 2^{-Mρ})|m+k/2|(1+ε_M|m+k|)^{-ρ}`,
   which majorises `|f^{(N)}_k(M,m)` for **all** `N > M` and is in `ℓ²` iff `ρ > 3/2`.
-- **Proof of Lemma 4.6** therefore keeps its original dominated-convergence structure, now with a
+- **Proof of Lemma 4.7** therefore keeps its original dominated-convergence structure, now with a
   correct majorant, plus a paragraph spelling out exactly why the naive majorant fails.
 - **Error estimates rewritten** around the exact, division-free splitting *(v5, eq. 208)*:
   `f^{(N)}_k − f_k = (A) + (B)` with (A) the `O(ε_N²)` discretization term carrying the decaying
   factor `ŝ(ε_M(m+k))`, and (B) the `O(ε_N)` term. For `k=0`, (B) vanishes and the estimate
   closes exactly *(v5, eqs. 211–214)*, reproducing the `2^{-2δN}` rate with an explicit constant.
-  New Remark 4.22 explains why the old sup-plus-Sobolev factorisation is unavailable for `k≠0`.
+  New Remark 4.33 explains why the old sup-plus-Sobolev factorisation is unavailable for `k≠0`.
 - **The `k≠0` estimate is now complete** *(v5, eqs. 222–224)*, splitting `Γ_{∞,±}` at the
-  Brillouin zone: the interior is handled by Corollary 3.8 applied to `Q_N`, and the tail
-  `|m+k| > π/ε_N` — where that corollary is unavailable — by Lemma 3.12, giving
+  Brillouin zone: the interior is handled by Corollary 3.10 applied to `Q_N`, and the tail
+  `|m+k| > π/ε_N` — where that corollary is unavailable — by Lemma 3.14, giving
   `Σ_tail ≤ C ε_M^{-3} 2^{-(2ρ-3)(N-M)}`, finite and exponentially small for the same reason
   that `g_k ∈ ℓ²`. Total: `Σ_N ≤ A₁ ε_N² + A₂ ε_N^{min{4, 2ρ-3}}`, with `A₁ = 0` for `k = 0`
   and after re-centring.
@@ -70,14 +79,14 @@ scaling function — far from 0 for Daubechies (`μ(₄s) ≈ 5.99`, `μ(₁₀s
 `T_a ℓ_{±,k} T_a^* = e^{±ika} ℓ_{±,k}`, this is exactly the phase of a translation by `ε_N μ(s)`.
 Comparing with the **re-centred** generators `e^{±iμ(s)ε_N k} L_{±,k}` (equivalently, replacing
 `R^N_∞` by `T_{-ε_N μ(s)} R^N_∞`) removes it and restores the `k=0` rate *(v5, eq. 215)*; see
-also Remark 4.21.
+also Remark 4.32.
 
 ---
 
-## 1b. Lemma 3.16 (scaling limit of the lattice vacua) — strengthened
+## 1b. Lemma 3.18 (scaling limit of the lattice vacua) — strengthened
 
 Not one of the eight findings; the lemma was correct, but it can be sharpened on three counts.
-The proof previously bounded the two-point function, invoked the decay estimate (Lemma 3.9) as
+The proof previously bounded the two-point function, invoked the decay estimate (Lemma 3.11) as
 the dominating function, and closed with "the algebra is finite dimensional, so weak\* = strong".
 
 - **The regularity hypothesis is removed entirely.** Writing out the pull-backs
@@ -103,8 +112,8 @@ the dominating function, and closed with "the algebra is finite dimensional, so 
   `‖ω^{(N)}_M − ω^{(N)}_S‖ ≤ 2L_N ϖ(δ_M(N))`, `ϖ` the modulus of continuity of `T ↦ ω_T` on the
   compact set `{0 ≤ T ≤ 1} ⊂ M₂(ℂ)`. The `N`-dependence is now isolated as the mode count.
 - **Both renormalization groups are covered by one argument** (`w_∞ = χ_{Γ_N}` is a Dirac
-  measure on each class), so the old Remark 3.18 becomes a one-line special case; it is replaced
-  by Remark 3.18 (what the hypothesis-free statement means) and new Remark 3.19 (where the rate
+  measure on each class), so the remark of v4 that made this point separately becomes a one-line
+  special case; it is replaced by Remark 3.21 (what the hypothesis-free statement means) and new Remark 3.22 (where the rate
   comes from — and why a *supremum* over the aliasing class would not be small).
 - Corrigenda in the old proof: `δ_{0, (π/L)(k−l) mod 2L_N}` → `(L/π)`, consistent with (126);
   "weak\* ⟹ **strong** convergence" → norm convergence; and the hypothesis (122) is restated as
@@ -112,7 +121,7 @@ the dominating function, and closed with "the algebra is finite dimensional, so 
 
 ---
 
-## 1c. Corollary 3.17 (scaling limit of the lattice vacua) — a gap and a rate
+## 1c. Corollary 3.19 (scaling limit of the lattice vacua) — a gap and a rate
 
 - **Gap: the zero mode.** The one-line proof ("the renormalization condition implies point-wise
   convergence of `S^{(N)}_0(k)`") holds for every `k` with `(m,k) ≠ (0,0)`, but fails at exactly
@@ -122,7 +131,7 @@ the dominating function, and closed with "the algebra is finite dimensional, so 
   `λ_N ≡ 0`) gives `S(0) = ½·1₂`, whereas `λ_N > 0` with `ε_N^{-1}λ_N → 0` gives
   `P^{(+)}_{λ_N}(0) = ½(1₂+σ_z)` for *every* `N`, hence `S(0) = ½(1₂−σ_z)` — a **different**
   scaling-limit state. The corollary now carries the convention as an explicit hypothesis.
-- **Why it is not harmless.** New Remark 3.18. Since `ŝ(0)=1`, `ŝ(2πn)=0` for `n≠0` and
+- **Why it is not harmless.** New Remark 3.20. Since `ŝ(0)=1`, `ŝ(2πn)=0` for `n≠0` and
   `m₀(π)=0`, the aliasing class of `l = 0` carries *all* its weight at `k = 0`, so (137)
   degenerates to `Ŝ^{(N)}_M(0) = S^{(N+M)}(0)`, `Ŝ^{(N)}_∞(0) = S(0)`: a discrepancy at the zero
   mode is **not** averaged away, enters `δ_M(N)` undamped, and is visible already in the
@@ -134,34 +143,34 @@ the dominating function, and closed with "the algebra is finite dimensional, so 
 - **An exact error identity and an `N`-uniform rate.** Subtracting (118) from (60) gives
   `‖S^{(N)}_0(k) − S(k)‖ = |sin(ε_N k/4)|` **exactly** (verified to `10^{-16}`), hence the
   scale-free bound `≤ π^{-1} ε_{N+M}|k|` inside *and* outside the Brillouin zone. Feeding this
-  into Step 2 of Lemma 3.16 yields
+  into Step 2 of Lemma 3.18 yields
   `δ_M(N) ≤ (C_s/π) 2^{-M} + 3 max_l ‖μ^l_M − μ^l_∞‖_TV`, with
   `C_s = sup_u Σ_n |ŝ(u+2πn)|² |u+2πn|` finite iff `s ∈ H^{1/2}`. Both bounds are **independent
   of `N`**; measured rate of `δ_M(N)` is `2^{-1.00·M}` for db4 and db8 at `N = 2,3,4`.
   Combined with (134) this gives an `N`-uniform error `≤ n δ_M(N)` for every monomial of degree
-  `2n` — the form needed in Remark 4.23 (CFT simulation).
-- Note the pattern: the *statement* of Lemma 3.16 needs no regularity, but this *rate* needs
+  `2n` — the form needed in Remark 4.34 (CFT simulation).
+- Note the pattern: the *statement* of Lemma 3.18 needs no regularity, but this *rate* needs
   `s ∈ H^{1/2}`, which Haar just fails (`|ŝ|² |ξ|` is then not summable). Recorded in
-  Remark 3.20.
+  Remark 3.22.
 
 ---
 
-## 1d. Lemma 4.6 and Theorem 4.8 — full domain and a sharp rate
+## 1d. Lemma 4.7 and Theorem 4.9 — full domain and a sharp rate
 
 - **Convergence on the whole domain, not just a core.** The one-particle statement was proved on
   the wavelet span `D_W`; it holds on all of `h¹(Γ_{∞,±}) = D(ℓ_{±,k})`. The ingredient is a
   uniform bound: writing `(R^N_∞)^* ξ̂(l) = ε_N^{-1/2} Σ_{k∼l} conj(ŝ(ε_N k)) ξ̂(k)` and applying
-  Cauchy–Schwarz against the **probability** weights of Lemma 3.16, together with `|l| ≤ |k|` on
+  Cauchy–Schwarz against the **probability** weights of Lemma 3.18, together with `|l| ≤ |k|` on
   each aliasing class, gives `‖(R^N_∞)^*‖_{h^σ→h^σ} ≤ 1` for every `σ ≥ 0`, hence
   `‖ℓ̃^{(N)}_{±,k}ξ‖ ≤ C_{k,L}‖ξ‖_{h¹}` **uniformly in `N`** (new eqs. 209–210). Density of `D_W`
   in `h¹` then does the rest. Measured `C_{k,L} → 1` for `L = π`.
-- **Consequence for Theorem 4.8.** The core `F^alg_a(D_W)` enlarges to `D(dΓ(⟨·⟩))` — a domain
+- **Consequence for Theorem 4.9.** The core `F^alg_a(D_W)` enlarges to `D(dΓ(⟨·⟩))` — a domain
   that, unlike `F^alg_a(D_W)`, does not depend on the choice of scaling function — and the
   convergence acquires the quantitative energy-type form *(v5, eq. 213)*
   `‖(α^N_∞(L^{(N)}_{±,k}) − L_{±,k})Φ‖ ≤ (L/π) C ε_N^{min{δ,1}} ‖dΓ(⟨·⟩^{1+δ})Φ‖`,
   using `dΓ(⟨·⟩^{1+δ}) ≤ (dΓ(⟨·⟩))^{1+δ}`. This is a `c = 0` analogue of the energy bound that
-  Hypothesis 6.4 postulates in `π_±`.
-- **Sharp rate in the Sobolev scale** (new Remark 4.7). The uniform bound cannot be upgraded to
+  Proposition 6.6 proves in `π_±`.
+- **Sharp rate in the Sobolev scale** (new Remark 4.8). The uniform bound cannot be upgraded to
   norm convergence at `σ = 1`: taking `ξ = e_n` with `n` the point of `Γ_{∞,±}` nearest
   `π/ε_N`, the lattice symbol is `O(1)` while `‖ℓ_{±,k}e_n‖ ∼ (π/ε_N)‖e_n‖`, giving the lower
   bound `‖ℓ̃^{(N)} − ℓ‖_{h^{1+δ}→h⁰} ≥ c ε_N^δ` — this is the Brillouin-zone edge, i.e. exactly
@@ -186,14 +195,14 @@ per mode, tending to 1), and records that removing it gains one order in every w
 It is **deliberately not built into Definition 3.2**, and the remark says why:
 
 - the re-centred maps `T_{−a_N} R^N_∞` with `a_N = ε_N μ(s)` fail asymptotic compatibility,
-  Proposition 3.7(4), since `a_{N+1} = a_N/2`; they do not form an inductive system, so the
+  Proposition 3.3(4), since `a_{N+1} = a_N/2`; they do not form an inductive system, so the
   scaling-limit construction of Section 3 would have to be redone;
 - re-centring the scaling function instead does not work either: `s(· + μ(s))` is orthonormal but
   satisfies a scaling equation with non-integer shifts `n − μ(s)`, so it is not the scaling
   function of a dyadic multiresolution analysis.
 
 It is therefore carried along as a *comparison convention*, invoked only where rates are stated
-(the error paragraph, Remarks 4.7 and 4.22 now point at Remark 3.5). The remark closes by noting
+(the error paragraph, Remarks 4.8 and 4.32 now point at Remark 3.5). The remark closes by noting
 that the **momentum-cutoff group needs no such convention**: no scaling function enters its
 symbol, `χ_{Γ_N}` contributes no first moment, and its error is `O(ε_N²)` from the outset — one
 further concrete advantage of that group, alongside the invariance of `D_std` under the Hardy
@@ -201,13 +210,13 @@ projections.
 
 ---
 
-## 1f. Theorem 4.13 and Lemma 4.12 — proofs, rates, and a corrected self-adjointness argument
+## 1f. Theorem 4.16 and Lemma 4.15 — proofs, rates, and a corrected self-adjointness argument
 
-- **Theorem 4.13 had no proof.** It now has one: (218) reduces it to `dF_±(ℓ̃^{(N)}_{±,k} − ℓ_{±,k})`
-  and the four terms of (224) are killed by Lemma 4.12. Core extended from `F^alg_a(D_std)` to
+- **Theorem 4.16 had no proof.** It now has one: (218) reduces it to `dF_±(ℓ̃^{(N)}_{±,k} − ℓ_{±,k})`
+  and the four terms of (224) are killed by Lemma 4.15. Core extended from `F^alg_a(D_std)` to
   `D(dΓ(⟨·⟩^{1+δ}))`, with the rate (228)
   `≤ (L/π)(C ε_N^{min{δ,2}}‖dΓ(⟨·⟩^{1+δ})Φ‖ + √C_k ε_N²‖(N+2)Φ‖)`.
-- **Lemma 4.12 now has a proof and is sharp.** For the momentum cutoff the difference is an
+- **Lemma 4.15 now has a proof and is sharp.** For the momentum cutoff the difference is an
   explicit multiplier-with-shift, so the operator norm is a supremum computable in closed form:
   `‖ℓ̃^{(N)}_{±,k} − ℓ_{±,k}‖_{h^{1+δ}→h⁰} ≍ ε_N^{min{δ,2}}` and `‖(·)_{±∓}‖₂ ≤ √C_k ε_N²`, plus
   the `h¹` domain extension. **No regularity of `s` is assumed** — no scaling function occurs in
@@ -217,13 +226,13 @@ projections.
   particle number and iterating (25) with (205) gives `(j!)²` after `j` steps, so the exponential
   series diverges for every `t`; the plane-wave Fock vectors cannot be shown to be analytic this
   way. (The statement is presumably true — it is the Goodman–Wallach/Carpi–Weiner analyticity of
-  finite-energy vectors — but not by the argument given.) Replaced by **Corollary 4.15**, via
+  finite-energy vectors — but not by the argument given.) Replaced by **Corollary 4.18**, via
   Nelson's *commutator* theorem with `N = 1 + L_{±,0}`: hypothesis (i) is the energy bound,
   hypothesis (ii) follows from `[L_{±,0}, L_{±,k}] = −(L/π)k L_{±,k}` together with the form
   bound. The conclusion is stronger than what was claimed — essential self-adjointness on *every*
   core for `1 + L_{±,0}`, in particular on `D(L_{±,0})`.
-- **Energy bound split** to avoid a §4 → §6 forward reference: **Lemma 4.14** (fixed `k`, no
-  regularity) and **Proposition 6.4** (smeared; the `k`-summation via Corollary 3.9 is the only
+- **Energy bound split** to avoid a §4 → §6 forward reference: **Lemma 4.17** (fixed `k`, no
+  regularity) and **Proposition 6.6** (smeared; the `k`-summation via Corollary 3.10 is the only
   point in the paper where regularity enters this argument).
 
 ---
@@ -233,8 +242,8 @@ projections.
 - **Gap found.** `j^{(N)}_k` of (254) is the *cyclic* shift on `Γ_{N,−}`; at the upper
   Brillouin-zone edge the wrap-around sends `+π/ε_N` to `−π/ε_N`, **across the Fermi point**. So
   `‖(j̃^{(N)}_k − j_k)_{−+}‖₂ = (|k|L/π)^{1/2}` for *every* `N` and does not tend to 0 (verified:
-  `1.0, 1.7, 2.4` for `k = 1, 3, 6`). The third hypothesis of Lemma 4.19 fails, so the proof
-  "identical to that of Theorem 4.20" is not available. The theorem is still true — the offending
+  `1.0, 1.7, 2.4` for `k = 1, 3, 6`). The third hypothesis of Lemma 4.23 fails, so the proof
+  "identical to that of Theorem 4.25" is not available. The theorem is still true — the offending
   block sits at momenta `≈ ±π/ε_N` and annihilates any fixed finite-particle vector once `N` is
   large — but not for the stated reason.
 - **Fix.** Carry over the `χ_{Γ_N}` modification of §4.2.2, which §5 had not done: (262).
@@ -271,25 +280,25 @@ projections.
   (`Θ_M ε_N² ≍ ε_M^{-3/2} 2^{-2(N−M)}`), and with `#qubits = #Λ_{N+1} ∝ 2^N` one gets
   `#qubits = O(2^M √(d(1+T)/η))` for chiral observables via the momentum-cutoff group, degrading
   to `O(2^M d(1+T)/η)` — a quadratic loss — on the full algebra or along the un-recentred wavelet
-  route. The prefactor `2^M ≳ 2K−1` comes from the localisation constraint of Remark 4.26 and
+  route. The prefactor `2^M ≳ 2K−1` comes from the localisation constraint of Remark 4.34 and
   `K ≥ 5` from 2-regularity. Currents (Lemma 5.1) attain the square root under weaker hypotheses.
-  Remark 4.26 now points forward to this.
+  Remark 4.34 now points forward to this.
 
 ---
 
-## 1i. Lemma 4.19 / Theorem 4.21 (smeared) — domain, rate, and the phase structure
+## 1i. Lemma 4.23 / Theorem 4.25 (smeared) — domain, rate, and the phase structure
 
 - **Domain and uniform bound.** `‖ℓ̃^{(N)}_±(S^M_N X)‖_{h¹→h⁰} ≤ C_{X,M}` uniformly in `N` under
-  `3/2`-regularity (233), hence all three statements of Lemma 4.19 extend from `D_std` to all of
-  `h¹`; Theorem 4.21's core extends to `D(dΓ(⟨·⟩^{1+δ}))` with the rate (238). Hypotheses now
-  quantified: `K ≥ 4` for the domain, `K ≥ 6` for the rate.
+  `3/2`-regularity (233), hence all three statements of Lemma 4.23 extend from `D_std` to all of
+  `h¹`; Theorem 4.25's core extends to `D(dΓ(⟨·⟩^{1+δ}))` with the rate (238). Hypotheses now
+  quantified: `K ≥ 4` for the domain, `K ≥ 7` for the rate.
 - **Structure of the two errors.** Written with a common prefactor, both smeared operators carry
   *loop weights* `w^(N)_k = ∏_{j≤N−M} m₀(ε_{M+j}k)` and `w^(∞)_k = ŝ(ε_M k)`, related in closed
   form by the scaling relation: `w^(N)_k − w^(∞)_k = w^(N)_k (1 − ŝ(ε_N k))` (232). So the
   smearing error is the deviation of `ŝ` from 1 at the **fine** scale — first order, the
   centre-of-mass phase again — and it, not the generator, is what limits (234) to
   `ε_N^{min{δ,1}}`.
-- **New Remark 4.20: the smearing error is a phase.** Orthonormality plus the order-`K` zero of
+- **New Remark 4.24: the smearing error is a phase.** Orthonormality plus the order-`K` zero of
   `m₀` at `π` give `|m₀(ξ)| = 1 + O(ξ^{2K})`, hence `|ŝ(ξ)| = 1 + O(ξ^{2K})` (235). Therefore
   `ŝ = e^{iφ}(1+O(ξ^{2K}))` with `φ` real and odd, `φ(ξ) = −μ(s)ξ + O(ξ³)`, and re-centring
   reduces (232) from first to **third** order (measured `3.00` for db4 and db8; the flatness is
@@ -302,23 +311,23 @@ projections.
 
 ## 2. Regularity thresholds (Finding 3)
 
-**New Definition 3.10** (`σ_K` = Sobolev exponent, "ρ-regular") and **new Remark 3.11** with the
+**New Definition 3.12** (`σ_K` = Sobolev exponent, "ρ-regular") and **new Remark 3.13** with the
 table of `σ_K` for `K = 2,…,11` and the three thresholds that actually occur:
 
 | requirement | where | threshold | minimal `K` |
 |---|---|---|---|
-| `D_W ⊂ D(ℓ_{±,k})`, majorant in `ℓ²` | Lemma 4.6 | `σ_K > 1` | **3** (`₂s` is *exactly* borderline) |
-| both Cauchy–Schwarz factors | Lemma 4.16 | `σ_K > 3/2` | **4** |
+| `D_W ⊂ D(ℓ_{±,k})`, majorant in `ℓ²` | Lemma 4.7 | `σ_K > 1` | **3** (`₂s` is *exactly* borderline) |
+| both Cauchy–Schwarz factors | Lemma 4.23 | `σ_K > 3/2` | **4** |
 | `‖ŝ(ε_M ·)‖_{h^{1+δ}} < ∞`, rate `2^{-2δN}` | error estimates | `σ_K > 1+δ` | **5** (`δ=1`), **9** (`δ=2`) |
 
-Lemma 4.6 now carries the hypothesis "`1`-regular" instead of "sufficiently regular", and the
+Lemma 4.7 now carries the hypothesis "`1`-regular" instead of "sufficiently regular", and the
 core argument on p. 44 states that `D_W` is `h¹`-dense *only under that hypothesis*.
 
 ---
 
-## 3. Remark 4.15, Moebius group (Finding 4)
+## 3. Remark 4.22, Moebius group (Finding 4)
 
-The claim "a simple extension of Lemma 4.6 is sufficient" is withdrawn and replaced by a correct
+The claim "a simple extension of Lemma 4.7 is sufficient" is withdrawn and replaced by a correct
 argument. The Hilbert–Schmidt norms do vanish for `k = 0, ±π/L`, but (200) also needs the
 diagonal blocks on the *Hardy-projected* vectors `P^∓ξ`, and `P^±` does not map `D_W` into `D_W`.
 What closes it: `ℓ_{±,k}` and `ℓ̃^{(N)}_{±,k}` are bounded `h¹ → h⁰` uniformly in `N`, `D_W` is
@@ -329,38 +338,39 @@ reason for passing to the momentum-cutoff group, where `P^±` leaves `D_std` inv
 
 ## 4. Normalisation of `ℓ_{±,k}` (Finding 5)
 
-Definition 4.2 carried a spurious factor `L/π` relative to the symbols in (165)/(167); taken
-literally, (170) would give `c = (L/π)²` rather than `c = 1`. Definition 4.2 is renormalised to
+Definition 4.3 (4.2 in v4) carried a spurious factor `L/π` relative to the symbols in (165)/(167); taken
+literally, (170) would give `c = (L/π)²` rather than `c = 1`. Definition 4.3 is renormalised to
 `ℓ_{±,k} e_m = ±(m∓k/2) e_{m∓k}`, i.e. `±1/(2π) → ±1/(2L)` in (181) and (184), and the
 consequential constants are corrected in (187), (198), (199), (201), (212), (213) and (194).
-**New Remark 4.3** records the normalisation and verifies `c = 1` (resp. `1/2`) for every `L`.
+**New Remark 4.4** records the normalisation and verifies `c = 1` (resp. `1/2`) for every `L`.
 Everything is now consistent with `L_{±,k} = (L/π) dF_S(ℓ_{±,k})` throughout.
 
 ---
 
-## 5. Theorem 6.3 (Finding 6) — now unconditional
+## 5. Theorem 6.5 (Finding 6) — now unconditional
 
 The proof previously ended with two asserted "additional observations". They are the decisive
-step and are not implied by Theorem 4.17: already `L_±(X)Ω₀` is an infinite two-particle
+step and are not implied by Theorem 4.25: already `L_±(X)Ω₀` is an infinite two-particle
 superposition (after smearing the off-diagonal block is Hilbert–Schmidt but no longer of finite
 rank, unlike the unsmeared `(ℓ_{±,k})_{±∓}`), so it lies outside `F^alg_a(D_std)`.
-**Proposition 6.4** supplies the required `N`-uniform energy bound
-`‖:π_±(α^N_∞(L^{(N)}_±(S^M_N(X)))): Ψ‖ ≤ C_X ‖(1+L_{±,0})Ψ‖`, **with proof**, so Theorem 6.3 is
+**Proposition 6.6** supplies the required `N`-uniform energy bound
+`‖:π_±(α^N_∞(L^{(N)}_±(S^M_N(X)))): Ψ‖ ≤ C_X ‖(1+L_{±,0})Ψ‖`, **with proof**, so Theorem 6.5 is
 unconditional. Three steps: (i) `sup_N ‖A^{-1/2} G^{(N)} A^{-1/2}‖ < ∞` with `A = ⟨·⟩`, from
-`‖A^{-1/2} ℓ̃^{(N)}_{±,k} A^{-1/2}‖ ≤ C⟨k⟩^{1/2}` summed against `S^M_N(X̂)` via Corollary 3.9 —
-convergent iff `ρ − 1/2 > 1`, i.e. under the **1-regularity already assumed in Lemma 4.6**, so no
+`‖A^{-1/2} ℓ̃^{(N)}_{±,k} A^{-1/2}‖ ≤ C⟨k⟩^{1/2}` summed against `S^M_N(X̂)` via Corollary 3.10 —
+convergent iff `ρ − 1/2 > 1`, i.e. under the **1-regularity already assumed in Lemma 4.7**, so no
 new hypothesis; (ii) real/imaginary parts and monotonicity of `dΓ` for the diagonal blocks;
-(iii) `sup_N ‖G^{(N)}_{±∓}‖₂ < ∞`, which is free because Lemma 4.17 proves those HS norms
+(iii) `sup_N ‖G^{(N)}_{±∓}‖₂ < ∞`, which is free because Lemma 4.23 proves those HS norms
 *converge*. Finally `dΓ(⟨·⟩) = N + L_{±,0}`, with `N ≤ 2L_{±,0}` in NS and `N ≤ 2·1 + L_{±,0}` in
 Ramond (the zero mode spans two dimensions of the doubled space (171), so Pauli caps its
 occupancy). A new bibitem for Buchholz–Schulz-Mirbach (1990) was added.
 
 ---
 
-## 6. Locality claim for Theorem 4.17 (Finding 7)
+## 6. Locality claim for Theorem 4.25 (Finding 7)
 
 The preamble claimed the two-RG combination preserves "localization in real space in the sense of
-Proposition 3.6". Proposition 3.6 is about the *wavelet* group; in Theorem 4.17 the fermion
+Proposition 3.6" (the v4 number; Proposition 3.7 in v5). That proposition is about the *wavelet*
+group; in Theorem 4.25 the fermion
 algebra is transported by the *momentum-cutoff* maps, which by (112) do not preserve
 localization. Reworded: the **smearing functions** are wavelet-localized at scale `ε_M`, and the
 technical role of the wavelet group for loops is summability of the `k`-sum, not locality.
@@ -370,7 +380,7 @@ technical role of the wavelet group for loops is summability of the `k`-sum, not
 ## 7. Corrigenda (Finding 8)
 
 - **(25)**: `‖aG₊₋aP_{≤n}‖ ≤ n‖G₊₋‖₂` → `‖aG₋₊aP_{≤n}‖ ≤ n‖G₋₊‖₂` (as used in (200)).
-- **Lemma 3.7**: `=` → `≤`; `max{e^C, π^{-𝒦_j}} = e^C` since `𝒦_j ≥ 0`; case 3 of the proof
+- **Lemma 3.7** (v4; Lemma 3.9 in v5): `=` → `≤`; `max{e^C, π^{-𝒦_j}} = e^C` since `𝒦_j ≥ 0`; case 3 of the proof
   claimed `2^{M𝒦_j} ≤ π^{-𝒦_j}(1+|l|)^{𝒦_j}`, which fails on `2^M < |l| < π2^M − 1` — the
   correct step is `2^{M𝒦_j} ≤ (1+|l|)^{𝒦_j}`.
 - **(213)**: `binom(2j,j)^{1/2}|k|^j Γ(·+j)/Γ(·) ≤ (4a)^j j!`, not `(2a)^j j!`, with
@@ -384,23 +394,23 @@ technical role of the wavelet group for loops is summability of the `k`-sum, not
 The convergence of all Bogoliubov transformations was obtained in v4 from strong resolvent
 convergence, hence without any rate. Two Duhamel lemmas replace that argument:
 
-- **New Lemma 4.11 (One-particle energy growth and Duhamel)** + **(220)**/**(221)**, with
+- **New Lemma 4.12 (One-particle energy growth and Duhamel)** + **(225)**/**(226)**, with
   `c_{σ,k} ≤ C_L σ|k|⟨k⟩^{σ+2}`, `c_{σ,0} = 0`, and `λ_{σ,k}(t) = (e^{c_{σ,k}|t|}−1)/c_{σ,k}`
   (`= |t|` at `k = 0`). Key point: `ℓ_{±,k}` is a weighted shift, so the commutator with the
   Sobolev weight is again a shift, and the `1/⟨l⟩` produced by differentiating `⟨l⟩^σ` cancels the
   `⟨l⟩` growth of the shift weight. The mollifier `(1+ρ⟨l⟩)^{-σ}` makes the Grönwall
   differentiation legitimate; `ρ↓0` by monotone convergence, then density + Fatou.
-- **(223)**: Corollary 4.9 (and, with (231), Corollary 4.20) becomes
+- **(228)**: Corollary 4.10 (and, with (236), Corollary 4.21) becomes
   `‖σ̃^{(N)}_t(π_S(A)) − σ_t(π_S(A))‖ ≤ C_{k,L,δ} ε_N^{min{δ,1}} λ_{1+δ,k}(t) (∏‖ξ_l‖)Σ_q‖ξ_q‖_{h^{1+δ}}/‖ξ_q‖`,
-  with `min{δ,1}` improving to `min{δ,2}` for the momentum-cutoff group by (231).
-- **New Remark 4.12 (Smeared generators)** + **(224)**: the same proof with the sum over `k`,
+  with `min{δ,1}` improving to `min{δ,2}` for the momentum-cutoff group by (236).
+- **New Remark 4.13 (Smeared generators)** + **(229)**: the same proof with the sum over `k`,
   requiring `Σ_k|Ŷ_k||k|⟨k⟩^{σ+2} < ∞`, which holds for `K − 𝒦₂ > σ + 4` by (109). Flagged as
   sufficient but not sharp.
-- **New Lemma 4.18 (Energy growth and Duhamel)**, Fock space, `𝒩 = 1 + L_{±,0}`, using the
-  Virasoro relation `[L_{±,0},L_{±,k}] = −(L/π)kL_{±,k}` and the form bound (235) from Lemma 4.16;
-  **Corollary 4.19** restated with **(238)**.
-- **(239)**: the derivations of Corollary 4.13 need no `t`-dependence at all, so (225) together
-  with (231) gives the bound directly.
+- **New Lemma 4.19 (Energy growth and Duhamel)**, Fock space, `𝒩 = 1 + L_{±,0}`, using the
+  Virasoro relation `[L_{±,0},L_{±,k}] = −(L/π)kL_{±,k}` and the form bound (240) from Lemma 4.17;
+  **Corollary 4.20** restated with **(243)**.
+- **(244)**: the derivations of Corollary 4.14 need no `t`-dependence at all, so (230) together
+  with (236) gives the bound directly.
 
 Consequence worth noting: for `k = 0` — the chiral time evolution the simulation budget of
 Remark 6.4 relies on — every one of these bounds is *linear* in `t`; the exponential factor
@@ -487,8 +497,8 @@ gives `K−𝒦`.
 | `os_check2.py` | product form ≡ quotient form where defined; failure of the old majorant; `ℓ²`-convergence; `2^{-KN}` resonance decay; `Error² = +∞` (Ramond) |
 | `os_check3.py` | decay exponents; existence of a valid majorant; `Error²` in NS; `P⁺s^{(ε_M)} ∉ V_J` |
 | `os_check4.py` | Daubechies filters and `σ_K` for `K = 2..12` |
-| `os_check8.py` | the region-(b) ratio of Lemma 3.12 stays bounded (in fact decreases) in `N`; BZ/tail split of `Σ_N` |
-| `os_check9.py` | the alias weights of Lemma 3.16 sum to 1 exactly, for `K = 1` (Haar) through `K = 8` |
+| `os_check8.py` | the region-(b) ratio of Lemma 3.14 stays bounded (in fact decreases) in `N`; BZ/tail split of `Σ_N` |
+| `os_check9.py` | the alias weights of Lemma 3.18 sum to 1 exactly, for `K = 1` (Haar), 2, 4 and 8 |
 | `os_check15.py` | smearing weights: `|1−ŝ(ε_N k)|` order 1, re-centred order 3; `|ŝ|` flat to `ξ^{2K}`; smeared operator-norm rates |
 | `os_check14.py` | vacuum-symbol deviation: order 1 on the full algebra, order 2 on the chiral subalgebra, closed forms to 7 digits |
 | `os_check13.py` | currents: exact bulk agreement; unmodified HS norm `= √(|k|L/π)` constant; modified `= 0`; rate `ε_N^δ` uncapped |

@@ -22,7 +22,7 @@
 
 \title{A critical re-reading of\\
 \emph{Conformal field theory from lattice fermions}\\
-\normalsize T.~J.~Osborne and A.~Stottmeister, Commun.\ Math.\ Phys.\ \textbf{405}, 219 (2024); arXiv:2301.00816}
+\normalsize T.~J.~Osborne and A.~Stottmeister, Commun.\ Math.\ Phys.\ \textbf{398}, 219--289 (2023); arXiv:2107.13834}
 \author{}
 \date{29 July 2026}
 
@@ -409,11 +409,25 @@ algebra and the argument is complete.
 Two smaller items in the same vicinity. Theorem 4.11 is stated with no proof at all (it is
 offered as an immediate consequence of Lemma 4.10 and (200)); and the assertion that
 $\mathfrak F^{\mathrm{alg}}_{\mathrm a}(\Dstd)$ contains a total set of analytic vectors for
-$L_{\pm,k}$ is left to the reader. The latter does hold: iterating (25) gives
-$\|(a^\dagger G_{+-}a^\dagger)^j P_{\le n}\|\le\prod_{i=0}^{j-1}(n+2i+2)\|G_{+-}\|_2^{\,j}
-\le 2^jj!\,j^{n/2}\|G_{+-}\|_2^{\,j}$, so the exponential series converges for
-$t<1/(2\|G_{+-}\|_2)$; combined with (187) for the diagonal part this gives a positive radius.
-Worth one displayed line in a revision.
+$L_{\pm,k}$ is justified only by a reference to Corollary 4.3 and (200).
+
+That assertion does not follow, and it cannot be had by iterating (25). In $\pi_\pm$ the pair
+terms $a^\dagger G_{+-}a^\dagger$ and $aG_{-+}a$ \emph{raise} the particle number, so at step
+$j$ the estimate is applied at level $n+2j$ rather than at level $n$, and iterating (25)
+together with (187) produces a factor $(j!)^2$ after $j$ steps; the exponential series then
+diverges for every $t>0$.\footnote{The first version of this note asserted the opposite,
+deriving a radius $t<1/(2\|G_{+-}\|_2)$ from
+$\|(a^\dagger G_{+-}a^\dagger)^jP_{\le n}\|\le 2^jj!\,j^{n/2}\|G_{+-}\|_2^{\,j}$. That bound
+holds the particle number fixed at $n$ and is wrong.} The statement itself is presumably true,
+being the Goodman--Wallach/Carpi--Weiner analyticity of finite-energy vectors, but it does not
+follow from the estimates available here.
+
+What repairs Theorem 4.11 is therefore not an analytic-vector argument at all, but Nelson's
+\emph{commutator} theorem [Reed--Simon X.37] applied with $N=1+L_{\pm,0}$: its first hypothesis
+is exactly the uniform energy bound demanded above, and its second follows from the Virasoro
+relation $[L_{\pm,0},L_{\pm,k}]=-\tfrac L\pi kL_{\pm,k}$ together with the form bound. The
+conclusion is stronger than the one claimed --- essential self-adjointness on \emph{every} core
+for $1+L_{\pm,0}$, in particular on $\mathcal D(L_{\pm,0})$.
 
 \section{Finding 7: the locality claim for Theorem 4.16}
 

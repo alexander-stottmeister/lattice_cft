@@ -1,29 +1,29 @@
 # Osborne–Stottmeister — what else can be improved right now
 
-Numbering is **v5** (`free_fermion_cft_v5.pdf`); Section-3 numbers shifted by one when
-Remark 3.5 was inserted, Section-4 and -6 numbers are unaffected. "Already done" refers to `CHANGES-v4-to-v5.md`.
+Numbering is **v5**, as compiled in `build/free_fermion_cft_v5.aux`; the v4-to-v5 correspondence
+is tabulated in the "Numbering" note of `CHANGES-v4-to-v5.md`, to which "already done" refers.
 
 ## Tools now available
 
-The v5 work produced five reusable techniques. Everything below is an application of one or
+The v5 work produced six reusable techniques. Everything below is an application of one or
 more of them, which is why these items are *immediate* rather than research problems.
 
 | | technique | source |
 |---|---|---|
-| **T1** | alias weights are **probability** weights; convergence via Scheffé + dominated convergence against a fixed probability measure | Lemma 3.17, eq. (139) |
-| **T2** | **uniform majorant** for `ŝ(2^{-J}l−h) P_J(l)`; the two decays interlock across the Brillouin zone | Lemma 3.13 |
+| **T1** | alias weights are **probability** weights; convergence via Scheffé + dominated convergence against a fixed probability measure | Lemma 3.18, eq. (139) |
+| **T2** | **uniform majorant** for `ŝ(2^{-J}l−h) P_J(l)`; the two decays interlock across the Brillouin zone | Lemma 3.14 |
 | **T3** | `‖(R^N_∞)^*‖_{h^σ→h^σ} ≤ 1` for all `σ ≥ 0` ⟹ uniform-in-`N` bounds, hence **extension from cores to full Sobolev domains** | eqs. (209)–(210) |
-| **T4** | **Jackson + Bernstein** for the MRA projection `P_N` ⟹ rates in the Sobolev scale; Brillouin-zone edge gives the matching lower bound | Remark 4.7 |
-| **T5** | the `O(ε_N)` defect is the **centre-of-mass phase** `e^{iμ(s)ε_N k}`; re-centring buys one order | eq. (233), Remark 4.22 |
+| **T4** | **Jackson + Bernstein** for the MRA projection `P_N` ⟹ rates in the Sobolev scale; Brillouin-zone edge gives the matching lower bound | Remark 4.8 |
+| **T5** | the `O(ε_N)` defect is the **centre-of-mass phase** `e^{iμ(s)ε_N k}`; re-centring buys one order | eq. (233), Remark 4.32 |
 | **T6** | determinant/Hadamard telescoping ⟹ **`N`-uniform** monomial bounds for quasi-free states | eq. (134) |
 
 ---
 
 ## Tier 1 — ~~high value, provable with what is in hand~~ **ALL DONE (items 1–5)**
 
-### 1. ~~Hypothesis 6.4 → **Theorem**~~ — **DONE** (now Proposition 6.4, with proof)
+### 1. ~~The smeared energy bound, carried as a hypothesis → **Theorem**~~ — **DONE** (now Proposition 6.6, with proof)
 
-Theorem 6.3 is unconditional. The proof went as sketched, with one improvement over the estimate
+Theorem 6.5 is unconditional. The proof went as sketched, with one improvement over the estimate
 made here: the relative bound needs only `⟨k⟩^{1/2}`, not `⟨k⟩`, because
 
 ```
@@ -31,22 +31,22 @@ sup_n |n ∓ k/2| / (⟨n∓k⟩^{1/2} ⟨n⟩^{1/2})  ≤  C ⟨k⟩^{1/2}
 ```
 
 (the quotient → 1 as |n| → ∞ and peaks at order |k|^{1/2} near n = 0). Summing against
-`S^M_N(X̂)` with Corollary 3.9 — whose Brillouin-zone hypothesis holds precisely because `k`
+`S^M_N(X̂)` with Corollary 3.10 — whose Brillouin-zone hypothesis holds precisely because `k`
 ranges over `Γ_{N,+}` — then converges iff `ρ − 1/2 > 1`, i.e. under **1-regularity**, the
-hypothesis already standing in Lemma 4.6. So no new regularity assumption was needed.
+hypothesis already standing in Lemma 4.7. So no new regularity assumption was needed.
 
 Ingredients, all now in the paper: `‖A^{-1/2}G^{(N)}A^{-1/2}‖ ≤ c_X` uniformly (267); real/imaginary
-parts plus monotonicity of `dΓ` for the diagonal blocks (268); Lemma 4.17's *convergence* of the
+parts plus monotonicity of `dΓ` for the diagonal blocks (268); Lemma 4.23's *convergence* of the
 HS norms giving `sup_N ‖G^{(N)}_{±∓}‖₂ < ∞` for the off-diagonal blocks (269); and
 `dΓ(A) = N + L_{±,0}` with `N ≤ 2L_{±,0}` in NS, `N ≤ 2·1 + L_{±,0}` in Ramond (the zero mode
 spans two dimensions of the doubled space, so Pauli caps its occupancy).
 
-### 2. ~~Theorem 4.13's missing proof~~ — **DONE**, and item 3 came with it
+### 2. ~~Theorem 4.16's missing proof~~ — **DONE**, and item 3 came with it
 
 The proof is three lines: (218) turns the statement into `dF_±(ℓ̃^{(N)}_{±,k} − ℓ_{±,k})`, and the
-four terms of (224) are killed by the second and third assertions of Lemma 4.12. Also done:
+four terms of (224) are killed by the second and third assertions of Lemma 4.15. Also done:
 the core extension to `D(dΓ(⟨·⟩^{1+δ}))` and the rate (228), and — since the domain extension
-needs its uniform bound — **item 3** as well: Lemma 4.12 now carries a proof, the sharp rate
+needs its uniform bound — **item 3** as well: Lemma 4.15 now carries a proof, the sharp rate
 `‖ℓ̃^{(N)}_{±,k} − ℓ_{±,k}‖_{h^{1+δ}→h⁰} ≍ ε_N^{min{δ,2}}`, `‖(·)_{±∓}‖₂ ≤ √C_k ε_N²`, the
 `h¹` domain extension, and the observation that no regularity is assumed anywhere. Measured
 rates `0.00, 0.50, 1.00, 2.00, 2.00` at `δ = 0, ½, 1, 2, 3` (exactly `min{δ,2}`, with the value
@@ -56,22 +56,22 @@ at `δ = 0` exactly `1`), HS rate `2.00` for `k = 2,4,8` (`os_check12.py`).
 `a†G_{+−}a†`, `aG_{−+}a` raise the particle number, and iterating (25) with (205) produces a
 factor `(j!)²` after `j` steps — the exponential series then diverges for every `t > 0`. (The
 statement itself is presumably true, being the Goodman–Wallach/Carpi–Weiner analyticity of
-finite-energy vectors, but it does not follow from Corollary 4.4 and (224) as claimed.) Replaced
-by **Corollary 4.15**: Nelson's *commutator* theorem [Reed–Simon X.37] applied with
+finite-energy vectors, but it does not follow from Corollary 4.5 and (224) as claimed.) Replaced
+by **Corollary 4.18**: Nelson's *commutator* theorem [Reed–Simon X.37] applied with
 `N = 1 + L_{±,0}`, whose hypothesis (i) is the energy bound and whose hypothesis (ii) follows from
 the Virasoro relation `[L_{±,0}, L_{±,k}] = −(L/π)k L_{±,k}` plus the *form* bound. This is
 stronger than what was claimed: essential self-adjointness on **every** core for `1 + L_{±,0}`.
 
 **Structural side-effect.** To avoid a §4 → §6 forward reference, the energy bound was split:
-**Lemma 4.14** (fixed `k`, no regularity at all, proved where it is used) and **Proposition 6.4**
-(smeared, the summation over `k` via Corollary 3.9, the single place where regularity enters).
+**Lemma 4.17** (fixed `k`, no regularity at all, proved where it is used) and **Proposition 6.6**
+(smeared, the summation over `k` via Corollary 3.10, the single place where regularity enters).
 Item 1 is thereby also tidier.
 
-### 3. ~~Lemma 4.12 (momentum-cutoff)~~ — **DONE** as part of item 2 (see above).
+### 3. ~~Lemma 4.15 (momentum-cutoff)~~ — **DONE** as part of item 2 (see above).
 
 <details><summary>original entry</summary>
 
-#### Lemma 4.12 — the easy twin of Lemma 4.6, and **strictly better**.
+#### Lemma 4.15 — the easy twin of Lemma 4.7, and **strictly better**.
 
 Here `R^N_∞` is a sharp cutoff, so `ℓ̃^{(N)}_{±,k}` is an explicit Fourier multiplier (199) and the
 sums in (201) are finite. Consequences, all one-liners:
@@ -88,7 +88,7 @@ sums in (201) are finite. Consequences, all one-liners:
 
 </details>
 
-### 4. ~~Theorem 5.1 (WZW currents)~~ — **DONE**, and it uncovered a gap
+### 4. ~~Theorem 5.2 (WZW currents)~~ — **DONE**, and it uncovered a gap
 
 The upgrade landed, but not quite as forecast: `j^{(N)}_k` as defined in (254) is the **cyclic**
 shift on `Γ_{N,−}`, and for the `|k|L/π` momenta at the upper Brillouin-zone edge the wrap-around
@@ -99,8 +99,8 @@ matrix elements of modulus one relative to the Hardy decomposition, and
 ‖(j̃^{(N)}_k − j_k)_{−+}‖₂ = (|k| L/π)^{1/2}   for all N,
 ```
 
-which does **not** tend to 0. The third hypothesis of Lemma 4.19 therefore fails and the proof
-pattern of Theorem 4.20 — which the paper invoked verbatim — is unavailable. Verified numerically:
+which does **not** tend to 0. The third hypothesis of Lemma 4.23 therefore fails and the proof
+pattern of Theorem 4.25 — which the paper invoked verbatim — is unavailable. Verified numerically:
 constant `1.0, 1.7, 2.4` for `k = 1, 3, 6`, i.e. exactly `√(|k|L/π)`.
 
 Fixed by carrying over the `χ_{Γ_N}` modification of §4.2.2, which §5 had not done. With it
@@ -120,7 +120,7 @@ Fixed by carrying over the `χ_{Γ_N}` modification of §4.2.2, which §5 had no
 **Remark 5.3** collects the four ways the current is better behaved than the Virasoro generators.
 Also fixed: (256) stated `j_k^* = j_k`; the correct adjoint is `j_{-k}`.
 
-### 5. ~~Remark 4.24 (CFT simulation)~~ and ### 6. ~~Theorems 6.1/6.2~~ — **BOTH DONE**
+### 5. ~~Remark 4.34 (CFT simulation)~~ and ### 6. ~~Theorems 6.1/6.2~~ — **BOTH DONE**
 
 Done together, since the budget is assembled from the explicit bound.
 
@@ -159,7 +159,7 @@ subalgebra — which is where the conformal structure lives — it is second ord
         = O( 2^M  d(1+T)/η  )          full 2-component algebra, or wavelet route un-recentred
 ```
 
-with `2^M ≳ 2K−1` from the localisation constraint of Remark 4.26 and `K ≥ 5` from 2-regularity.
+with `2^M ≳ 2K−1` from the localisation constraint of Remark 4.34 and `K ≥ 5` from 2-regularity.
 So **locality (the wavelet group) is paid for in qubits unless one re-centres** — the square root
 is lost, a quadratic cost — which retrospectively justifies keeping re-centring available
 (Remark 3.5). And by item 4, currents attain the square root under weaker hypotheses still.
@@ -169,13 +169,13 @@ is lost, a quadratic cost — which retrospectively justifies keeping re-centrin
 ### 6. Theorems 6.1 / 6.2 — explicit error bounds for dynamical correlation functions.
 
 The proofs are complete but qualitative. Combining **T6** (the `N`-uniform monomial bound (134)),
-Corollary 3.18's rate and the unitary bounds (211)/(213) gives a fully explicit bound, uniform on
+Corollary 3.19's rate and the unitary bounds (211)/(213) gives a fully explicit bound, uniform on
 compact time intervals. *Effort ≈ 1 page.*
 
-### 7. ~~Lemma 4.19 / Theorem 4.21 (smeared)~~ — **DONE**
+### 7. ~~Lemma 4.23 / Theorem 4.25 (smeared)~~ — **DONE**
 
 Done as planned (domain `D_std → h¹`, rate, explicit thresholds `σ_K > 3/2` and `> 5/2`,
-i.e. `K ≥ 4` and `K ≥ 6`), plus one thing that was not planned.
+i.e. `K ≥ 4` and `K ≥ 7`), plus one thing that was not planned.
 
 Writing the two smeared operators with a common prefactor exhibits the **loop weights**
 `w^(N)_k = ∏_{j≤N−M} m₀(ε_{M+j}k)` and `w^(∞)_k = ŝ(ε_M k)`, and the scaling relation gives them in
@@ -208,7 +208,7 @@ precision for `K ≥ 4`).
 **wavelet route loses nothing against the momentum-cutoff one** — measured `0.95` at `δ=1` and
 `1.86` at `δ=2`. Together with Remark 6.4(4) this closes the wavelet-vs-cutoff question: with
 re-centring the two routes are equivalent in rate, and the wavelet group's real-space locality
-comes for free. Recorded as **Remark 4.20**; Theorem 4.21 gains the core extension and (238).
+comes for free. Recorded as **Remark 4.24**; Theorem 4.25 gains the core extension and (238).
 
 ### 8. Corollaries 4.10 / 4.14 / 4.20 / 4.21 / 4.31 — make the Bogoliubov statements quantitative. **DONE**
 
@@ -412,7 +412,7 @@ called the measured exponent `K−𝒦₂` when Lemma 3.11 only guarantees `K−
   **Decided (and implemented): no.** It is carried along as an alternative *comparison
   convention* in the new **Remark 3.5**, invoked only where rates are stated. Two reasons, both
   now recorded in the paper: (i) the re-centred maps `T_{−a_N}R^N_∞`, `a_N = ε_N μ(s)`, violate
-  asymptotic compatibility (Proposition 3.7(4)) because `a_{N+1} = a_N/2`, so they do not define
+  asymptotic compatibility (Proposition 3.3(4)) because `a_{N+1} = a_N/2`, so they do not define
   an inductive system and the whole construction of Section 3 would have to be redone;
   (ii) one cannot re-centre the scaling function instead — `s(·+μ(s))` is orthonormal but obeys a
   scaling equation with non-integer shifts `n − μ(s)`, hence is not the scaling function of a
@@ -428,7 +428,7 @@ called the measured exponent `K−𝒦₂` when Lemma 3.11 only guarantees `K−
 
 `free_fermion_cft_v5.tex` compiles clean (0 errors, 0 undefined references or citations, no
 multiply-defined labels); `diff_v4_v5.pdf` is the latexdiff against the untouched author source.
-Numerical support is `numerics/os_check1.py … os_check18.py`, pure numpy.
+Numerical support is `numerics/os_check.py … os_check19.py`, pure numpy.
 
 Run `python3 sync_docs.py` after any recompile: the item 8–14 sections of this file and of
 `CHANGES-v4-to-v5.md` are generated from `{{label}}` placeholders substituted out of

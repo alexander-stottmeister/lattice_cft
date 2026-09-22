@@ -1,0 +1,44 @@
+cff-version: 1.2.0
+message: >-
+  If you refer to this work, please cite it as below, and please cite the published
+  article (doi:10.1007/s00220-022-04521-8) for the results it contains. The revised
+  manuscript in this repository is not the version of record and has not been refereed.
+title: >-
+  Conformal field theory from lattice fermions: a critical re-reading, a revised
+  manuscript, and a note on the Zini-Wang comparison
+abstract: >-
+  An adversarial re-examination of Osborne and Stottmeister, Conformal Field Theory
+  from Lattice Fermions, Commun. Math. Phys. 398 (2023) 219-289. Eight findings are
+  recorded, among them an invalid domination step that recurs in three places, an
+  error estimate that is infinite as stated in the Ramond sector, three unstated
+  regularity thresholds of which the largest is K >= 9, and a normalisation that read
+  literally gives central charge (L/pi)^2. No theorem statement is affected. The
+  repository contains a revised manuscript repairing all eight and adding sharp rates,
+  Duhamel estimates, an unconditional proof of the Virasoro correlation-function
+  theorem via a scale-uniform energy bound, a reconstruction theorem for smeared
+  Koo-Saleur approximants and an explicit quantum-simulation error budget; a separate
+  note showing that the obstruction to the Zini-Wang low-energy scaling limit is
+  constancy of the GNS multiplicity rather than purity; and nineteen numpy scripts
+  supporting every quoted number.
+type: software
+authors:
+  - family-names: Stottmeister
+    given-names: Alexander
+    affiliation: >-
+      Institut fuer Theoretische Physik, Leibniz Universitaet Hannover, Germany
+    orcid: "https://orcid.org/0000-0002-0145-0877"
+license:
+  - CC-BY-4.0
+  - MIT
+keywords:
+  - conformal field theory
+  - lattice fermions
+  - operator-algebraic renormalization
+  - Koo-Saleur formula
+  - Virasoro algebra
+  - Daubechies wavelets
+  - quantum simulation
+  - mathematical physics
+repository-code: "https://github.com/alexander-stottmeister/lattice_cft"
+# No DOI and no version: this is an ongoing research record, not a released artifact.
+# Cite it by repository URL and commit.
