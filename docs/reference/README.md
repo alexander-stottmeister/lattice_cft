@@ -5,7 +5,7 @@ Four pages, meant to be read in this order if you are new to the material.
 | page | what it is for |
 |---|---|
 | [status.md](status.md) | what is settled, what rests on a computation, and what is open |
-| [notation.md](notation.md) | symbols and conventions, including the two that are easy to get wrong |
+| [notation.md](notation.md) | symbols and conventions, including the three that are easy to get wrong |
 | [definitions.md](definitions.md) | the objects the results are about, in words |
 | [results.md](results.md) | every numbered statement of the revision, with its page and a link to the widget that explores it |
 

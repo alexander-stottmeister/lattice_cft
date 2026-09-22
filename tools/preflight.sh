@@ -9,7 +9,7 @@
 # Exits non-zero if any check fails. Nothing here modifies the repository or the remote.
 #
 # The checklist is due to the glimm_jaffe session, which ran the same exercise on a sibling
-# repository; the traps in steps 2, 5 and 7 are ones that caught somebody out there.
+# repository; the traps recorded in steps 5, 7 and 10 are ones that caught somebody out there.
 set -eu
 
 REPO=$(cd "$(dirname "$0")/.." && pwd)
@@ -21,6 +21,17 @@ pass() { printf '  [ ok ] %s\n' "$1"; }
 fail() { printf '  [FAIL] %s\n' "$1"; FAIL=$((FAIL+1)); }
 note() { printf '         %s\n' "$1"; }
 trap 'rm -rf "$TMP"' EXIT
+
+# The strings step 4 and step 5 look for are assembled from fragments, so that this script
+# does not contain them literally and therefore does not match itself. Written out, step 4
+# fails on the auditor: it passed while the script was still untracked, because a clone
+# cannot see an untracked file, and failed the moment the script was committed.
+P_SESS='Claude-Sess''ion'
+P_MAIL='@gm''ail'
+P_INST='@itp''\.uni-hannover'
+P_HOME='/Us''ers/'
+P_WS='Documents''/Uni'
+SECRETS="$P_SESS|$P_MAIL|$P_INST|$P_HOME|$P_WS"
 
 echo "Pre-flight audit of $SLUG"
 echo "  clone: $CLONE"
@@ -68,21 +79,21 @@ if [ -z "$BAD" ]; then pass "no third-party or private path in any commit"
 else fail "a private path is in the history"; printf "%b" "$BAD" | sed 's/^/         /'; fi
 
 echo "4. no session URL, address or local path in tracked content"
-HIT=$(git grep -l -I -E 'Claude-Session|@gmail|@itp\.uni-hannover|/Users/|Documents/Uni' -- . || true)
+HIT=$(git grep -l -I -E "$SECRETS" -- . || true)
 if [ -z "$HIT" ]; then pass "clean across $(git ls-files | wc -l | tr -d ' ') tracked files"
 else fail "a tracked file carries one of these"; echo "$HIT" | sed 's/^/         /'; fi
 
 echo
 echo "5. binaries: metadata as well as page content"
-MET=$(for f in docs/pdf/*.pdf; do strings "$f" | grep -iE '/Users/|Documents/Uni|@gmail' || true; done)
+MET=$(for f in docs/pdf/*.pdf; do strings "$f" | grep -iE "$P_HOME|$P_WS|$P_MAIL" || true; done)
 if [ -z "$MET" ]; then pass "no local path or address in any PDF's metadata or streams"
 else fail "a PDF embeds a local path or address"; echo "$MET" | sed 's/^/         /'; fi
 if command -v pdftotext >/dev/null 2>&1; then
-  TXT=$(for f in docs/pdf/*.pdf; do pdftotext "$f" - 2>/dev/null | grep -iE '/Users/|Claude-Session' || true; done)
+  TXT=$(for f in docs/pdf/*.pdf; do pdftotext "$f" - 2>/dev/null | grep -iE "$P_HOME|$P_SESS" || true; done)
   [ -z "$TXT" ] && pass "no such string in the rendered text either" || { fail "rendered PDF text carries one"; echo "$TXT" | sed 's/^/         /'; }
 else note "pdftotext not installed; rendered text not checked"
 fi
-SVG=$(grep -l -E '/Users/|<!--' docs/figures/*.svg 2>/dev/null || true)
+SVG=$(grep -l -E "$P_HOME|<!--" docs/figures/*.svg 2>/dev/null || true)
 [ -z "$SVG" ] && pass "no comments or paths in the committed SVGs" || { fail "an SVG carries a comment or a path"; echo "$SVG" | sed 's/^/         /'; }
 
 echo
@@ -92,9 +103,14 @@ if [ "$(echo "$IDS" | grep -cv 'users\.noreply\.github\.com')" -eq 0 ]; then
   pass "every author and committer is the GitHub noreply address"
 else fail "a commit carries a real address"; echo "$IDS" | sed 's/^/         /'; fi
 N=$(git rev-list --count HEAD)
-S=$(git log --format=%B | grep -c 'Claude-Session' || true)
-C=$(git log --format=%B | grep -c 'Co-Authored-By' || true)
-[ "$S" -eq 0 ] && pass "no Claude-Session line in $N commits" || fail "$S commit message(s) carry a session URL"
+# count COMMITS, not lines: a commit message that discusses the trailer as well as carrying
+# one would be counted twice by `git log --format=%B | grep -c`.
+S=0; C=0
+for c in $(git rev-list HEAD); do
+  git log -1 --format=%B "$c" | grep -q "$P_SESS" && S=$((S+1))
+  git log -1 --format=%B "$c" | grep -q 'Co-Authored-By:' && C=$((C+1))
+done
+[ "$S" -eq 0 ] && pass "no session URL in any of $N commit messages" || fail "$S commit message(s) carry a session URL"
 if [ "$C" -eq "$N" ]; then pass "$C Co-Authored-By trailers for $N commits"; else
   note "$C Co-Authored-By trailers for $N commits; these lack one:"
   for c in $(git rev-list HEAD); do
@@ -110,6 +126,15 @@ echo "7. the pruned commits are still gone from the remote"
 # and gh --jq prints that error JSON to stdout. Testing for "Not Found", or for empty
 # output, reports the opposite of the truth. Test for a 40-hex sha.
 if command -v gh >/dev/null 2>&1; then
+  # Positive control first: ask for a commit that MUST exist. Without it, an unauthenticated
+  # gh or a network failure answers nothing and every line below reads as "not served".
+  CTL=$(gh api "repos/$SLUG/commits/$(git rev-parse HEAD)" --jq '.sha' 2>&1 || true)
+  if printf '%s' "$CTL" | grep -qE '^[0-9a-f]{40}$'; then
+    pass "positive control: the API returns HEAD, so a negative answer below means something"
+  else
+    fail "positive control failed: the API did not return HEAD, so step 7 is inconclusive"
+    note "$(printf '%s' "$CTL" | head -c 120)"
+  fi
   for sha in 69c2afa a66065d 8b4a370; do
     OUT=$(gh api "repos/$SLUG/commits/$sha" --jq '.sha' 2>&1 || true)
     if printf '%s' "$OUT" | grep -qE '^[0-9a-f]{40}$'; then fail "$sha is still served by the remote"

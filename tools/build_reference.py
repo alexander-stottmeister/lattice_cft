@@ -17,6 +17,9 @@ import re
 import sys
 import datetime
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from md2html import md_to_html, page as html_page  # noqa: E402  ('page' is a loop variable below)
+
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD = os.path.join(HERE, "build")
 REF = os.path.join(HERE, "docs", "reference")
@@ -174,6 +177,21 @@ def main():
     print("  results.md: %d statements, %d sections, %d new in v5"
           % (len(rows), len({r["section"] for r in rows}), sum(1 for r in rows if r["new_in_v5"])))
     print("  results.json written")
+
+    # Render the reference pages to HTML. GitHub renders the Markdown when browsing the
+    # repository, but the site sets .nojekyll, so Pages serves files verbatim: without this
+    # docs/reference/ has no index and results.md is served as plain text.
+    titles = {"README": "Reference", "status": "Status", "notation": "Notation and conventions",
+              "definitions": "Definitions", "results": "Results index"}
+    for stem, title in titles.items():
+        src = os.path.join(REF, stem + ".md")
+        if not os.path.exists(src):
+            continue
+        body = md_to_html(open(src, encoding="utf-8").read())
+        out = "index.html" if stem == "README" else stem + ".html"
+        with open(os.path.join(REF, out), "w", encoding="utf-8") as f:
+            f.write(html_page(title + " \u2014 lattice CFT", body))
+    print("  %d reference pages rendered to HTML" % len(titles))
 
 
 if __name__ == "__main__":

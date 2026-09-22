@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notation and conventions — lattice CFT</title>
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  main.doc { max-width: 90ch; margin: 0 auto; padding: 26px 22px 60px; }
+  main.doc table { border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  main.doc th, main.doc td { text-align: left; padding: 5px 11px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  main.doc h1 { font-size: 1.5rem; } main.doc h2 { font-size: 1.18rem; margin-top: 1.7em; }
+  main.doc pre { background: var(--soft); padding: 11px 13px; border-radius: 6px; overflow-x: auto; }
+  main.doc blockquote { border-left: 3px solid var(--line); margin: 12px 0; padding: 2px 14px; color: var(--mute); }
+  main.doc .crumb { font-size: .88rem; color: var(--mute); margin-bottom: 18px; }
+</style>
+</head>
+<body>
+<main class="doc">
+<p class="crumb"><a href="../index.html">&larr; interactive companion</a> &middot;
+   <a href="index.html">reference index</a></p>
+<h1>Notation and conventions</h1>
+<p>Symbols first, then the three conventions that are easy to get wrong and that cost time when they are got wrong.</p>
+<h2>Symbols</h2>
+<table>
+<thead><tr>
+<th>symbol</th>
+<th>meaning</th>
+</tr></thead>
+<tbody>
+<tr><td><code>L</code></td><td>the circumference of the spatial circle. Throughout the numerics <code>L = π</code>, which makes <code>π/L = 1</code></td></tr>
+<tr><td><code>ε_N</code></td><td>the lattice spacing at scale <code>N</code>, equal to <code>2^{-N} L</code>. Larger <code>N</code> is a finer lattice</td></tr>
+<tr><td><code>Λ_N</code></td><td>the lattice at scale <code>N</code>; <code>#Λ_{N+1}</code> is the qubit count in the simulation budget</td></tr>
+<tr><td><code>Γ_{N,±}</code></td><td>the momentum lattice, <code>+</code> Ramond and <code>−</code> Neveu–Schwarz. With <code>L = π</code> these are <code>ℤ</code> and <code>ℤ + 1/2</code></td></tr>
+<tr><td><code>K</code></td><td>the Daubechies order. The filter has <code>2K</code> taps and the scaling function support <code>[0, 2K−1]</code></td></tr>
+<tr><td><code>h_n</code></td><td>the low-pass filter taps, normalised so that their sum is <code>√2</code></td></tr>
+<tr><td><code>m₀(ξ)</code></td><td>the low-pass symbol, <code>2^{-1/2} Σ_n h_n e^{-inξ}</code></td></tr>
+<tr><td><code>ŝ(ξ)</code></td><td>the transform of the scaling function, the infinite product <code>∏_{j≥1} m₀(2^{-j}ξ)</code></td></tr>
+<tr><td><code>μ(s)</code></td><td>the centre of mass <code>∫ x s(x) dx</code>, equal to <code>2^{-1/2} Σ_n n h_n</code></td></tr>
+<tr><td><code>σ_K</code></td><td>the Sobolev exponent of the scaling function</td></tr>
+<tr><td><code>ρ</code></td><td>the pointwise decay exponent of <code>ŝ</code></td></tr>
+<tr><td><code>R^N_∞</code>, <code>α^N_∞</code></td><td>the renormalization maps on the one-particle space and on the algebra</td></tr>
+<tr><td><code>ℓ_{±,k}</code>, <code>L_{±,k}</code></td><td>the one-particle and second-quantised Virasoro generators, <code>±</code> for the two chiralities</td></tr>
+<tr><td><code>δ</code></td><td>the Sobolev index in which rates are stated; the advertised rate is at <code>δ = 2</code></td></tr>
+<tr><td><code>m(S)</code></td><td>the number of eigenvalues of a symbol lying strictly between 0 and 1</td></tr>
+</tbody>
+</table>
+<h2>Three conventions worth stating</h2>
+<p><strong>Which reflection of the filter.</strong> The spectral factorisation used by <code>tools/dbfilters.py</code> and by <code>numerics/os_check4.py</code> produces the <em>mirror image</em> of the filter table hard-coded in <code>numerics/os_check.py</code>. Reversing a real filter replaces <code>m₀(ξ)</code> by <code>e^{-i(2K−1)ξ} conj(m₀(ξ))</code>, so <code>|m₀|</code> and hence <code>|ŝ|</code> are untouched: the zeros, the Sobolev exponents and every aliasing quantity are the same either way. What does change is the centre of mass, which becomes <code>(2K−1) − μ(s)</code>, and the centre of mass is exactly what the re-centring results turn on. The manuscript's convention is the constructed one: it gives <code>μ = 5.99</code> at <code>K = 4</code> and <code>16.87</code> at <code>K = 10</code>, the values Remark 3.5 quotes. The self-test in <code>tools/dbfilters.py</code> pins this.</p>
+<p><strong>Two regularity exponents, not one.</strong> <code>σ_K</code> controls sums of <code>ŝ</code> against a Sobolev weight; <code>ρ</code> controls a single value of <code>ŝ</code>. They are close, with <code>ρ</code> slightly the larger, and they are not interchangeable: Lemma 4.28 needs both, entering through different factors. Every "<code>ρ</code>-regular" hypothesis in the revision means <code>σ_K &gt; ρ</code>, a strict inequality, which is why <code>5/2</code>-regularity needs <code>K ≥ 7</code> and not the <code>K ≥ 6</code> printed in Theorem 4.25.</p>
+<p><strong>Which version's numbering.</strong> The revision, the audit and the two Markdown records do not share a numbering. The audit uses the <strong>published</strong> numbers. The records use the revision's, with a correspondence table in <code>CHANGES-v4-to-v5.md</code>. <code>results.md</code> in this folder is generated from the compiled revision, so it is the one place where the numbers cannot drift.</p>
+</main>
+</body>
+</html>

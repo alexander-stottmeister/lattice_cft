@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Status — lattice CFT</title>
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  main.doc { max-width: 90ch; margin: 0 auto; padding: 26px 22px 60px; }
+  main.doc table { border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  main.doc th, main.doc td { text-align: left; padding: 5px 11px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  main.doc h1 { font-size: 1.5rem; } main.doc h2 { font-size: 1.18rem; margin-top: 1.7em; }
+  main.doc pre { background: var(--soft); padding: 11px 13px; border-radius: 6px; overflow-x: auto; }
+  main.doc blockquote { border-left: 3px solid var(--line); margin: 12px 0; padding: 2px 14px; color: var(--mute); }
+  main.doc .crumb { font-size: .88rem; color: var(--mute); margin-bottom: 18px; }
+</style>
+</head>
+<body>
+<main class="doc">
+<p class="crumb"><a href="../index.html">&larr; interactive companion</a> &middot;
+   <a href="index.html">reference index</a></p>
+<h1>Status</h1>
+<p>What is settled, what rests on a computation, and what is open. Nothing here has been refereed; read it as a claim under verification. The audit that prompted the revision was adversarial by design, and it was itself audited: several of its own repairs turned out to be wrong and were corrected, which is recorded below rather than quietly dropped.</p>
+<h2>Settled in the revision</h2>
+<p>The three theorems of the published article stand, with no statement changed. No counterexample to any of them was found.</p>
+<ul><li><strong>Theorem A</strong>, convergence of the Koo–Saleur approximants to the Virasoro generators in the positive-energy representations, is Theorem 4.16 of the revision. The published version stated it with no proof; there is one now.</li><li><strong>Theorem B</strong>, convergence of the fermion correlation functions, is Theorem 6.1.</li><li><strong>Theorem C</strong>, convergence of the Virasoro correlation functions, is Theorem 6.5, and it is now <strong>unconditional</strong>. The published proof rested on two asserted ingredients, one of them a scale-uniform energy bound that is a theorem in its own right; that bound is Proposition 6.6 and it needs no hypothesis beyond the one already in force.</li></ul>
+<p>All eight findings of the audit are repaired. The two substantive ones were a domination step that is false rather than merely unjustified, and a normalisation that, read literally, would have given central charge <code>(L/π)²</code> instead of 1.</p>
+<p>Beyond repair, the revision adds sharp rates in the Sobolev scale, Duhamel estimates that replace "converges uniformly on compact intervals" with an explicit bound, a reconstruction theorem for arbitrary smooth loops, exact approximants for the currents, and an end-to-end error budget for quantum simulation.</p>
+<h2>Resting on a computation</h2>
+<p>These are supported by the scripts in <code>numerics/</code>, not by a proof, and are labelled <strong>numerical</strong> in <a href="results.html">results.md</a>.</p>
+<ul><li>The <strong>regularity table</strong>: the Sobolev exponents <code>σ_K</code> and the pointwise exponents <code>ρ</code>. The exponents are measured from the dyadic-block decay of <code>ŝ</code>, reproducing the standard values to three or four digits. Every threshold in the revision is read off this table, including the <code>K ≥ 9</code> that the advertised rate needs.</li><li>The <strong>measured rates</strong> quoted beside each theoretical rate. Where the two disagree the revision says so: the growth constant of Remark 4.13 and the aliasing exponent of Lemma 4.28 are both sufficient rather than sharp, and the revision states that at each place.</li></ul>
+<p>The interactive page recomputes much of this in the browser from the same filters, so the agreement can be checked rather than taken on trust.</p>
+<h2>Open</h2>
+<ul><li><strong>The disposition of the revision is not decided.</strong> Whether it becomes a corrigendum, an arXiv replacement or a separate follow-up paper is an open question, and it governs what may be cited and how.</li><li><strong>Three constants are known to be loose</strong>: the growth constant of Remark 4.13, the aliasing exponent of Lemma 4.28, and the bound <code>σ_K ≥ K − 𝒦 − ½</code> of Definition 3.12, which gives away half a derivative that is not actually lost.</li><li><strong>Four things the Zini–Wang note does not settle</strong>, listed in its own Section 8: the converse direction, states that are not quasi-free, the passage to infinitely many scales, which needs quasi-equivalence rather than a multiplicity count, and the strong scaling limit in the mixed case.</li><li><strong>Future work named in the article</strong> and untouched here: central charge below 1 through the coset construction, arbitrary rational theories through anyonic chains, symplectic fermions, and odd observables in the Ising case.</li></ul>
+<h2>Known defects that are not fixed</h2>
+<ul><li>An <strong>earlier version of the audit</strong> offered a one-line repair of the analytic-vector claim. That repair is wrong: the pair terms raise the particle number, so iterating produces a factorial squared and the series diverges for every time. The text now says so, and the actual repair is Nelson's commutator theorem. This is recorded rather than removed because the mistake is instructive.</li><li>**Theorem 4.25 prints <code>K ≥ 6</code>** where the strict inequality of Definition 3.12 and the table of Remark 3.13 give <code>K ≥ 7</code>. Corrected in the two Markdown records; the theorem statement itself still carries the printed value at the time of writing.</li><li>A <strong>sibling folder</strong> in the author's workspace, not part of this repository, still cites the published article with the wrong volume and year.</li></ul>
+</main>
+</body>
+</html>

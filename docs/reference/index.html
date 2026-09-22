@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference — lattice CFT</title>
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  main.doc { max-width: 90ch; margin: 0 auto; padding: 26px 22px 60px; }
+  main.doc table { border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  main.doc th, main.doc td { text-align: left; padding: 5px 11px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  main.doc h1 { font-size: 1.5rem; } main.doc h2 { font-size: 1.18rem; margin-top: 1.7em; }
+  main.doc pre { background: var(--soft); padding: 11px 13px; border-radius: 6px; overflow-x: auto; }
+  main.doc blockquote { border-left: 3px solid var(--line); margin: 12px 0; padding: 2px 14px; color: var(--mute); }
+  main.doc .crumb { font-size: .88rem; color: var(--mute); margin-bottom: 18px; }
+</style>
+</head>
+<body>
+<main class="doc">
+<p class="crumb"><a href="../index.html">&larr; interactive companion</a> &middot;
+   <a href="index.html">reference index</a></p>
+<h1>Reference</h1>
+<p>Four pages, meant to be read in this order if you are new to the material.</p>
+<table>
+<thead><tr>
+<th>page</th>
+<th>what it is for</th>
+</tr></thead>
+<tbody>
+<tr><td><a href="status.html">status.md</a></td><td>what is settled, what rests on a computation, and what is open</td></tr>
+<tr><td><a href="notation.html">notation.md</a></td><td>symbols and conventions, including the three that are easy to get wrong</td></tr>
+<tr><td><a href="definitions.html">definitions.md</a></td><td>the objects the results are about, in words</td></tr>
+<tr><td><a href="results.html">results.md</a></td><td>every numbered statement of the revision, with its page and a link to the widget that explores it</td></tr>
+</tbody>
+</table>
+<p><code>results.md</code> is generated from the compiled document by <code>tools/build_reference.py</code> and must not be edited by hand. The other three are written by hand; where they quote a number they name its source.</p>
+<h2>Orientation in one paragraph</h2>
+<p>A conformal field theory is approximated by a chain of lattice models. Two renormalization groups connect the scales: a <strong>wavelet</strong> one, built from a Daubechies scaling function, which keeps things local in real space, and a <strong>momentum-cutoff</strong> one, which does not but behaves better analytically. The Koo–Saleur formula builds candidate Virasoro generators on each lattice. The theorems say those candidates converge, in the right topology and on the right domain, to the generators of the continuum theory, and that correlation functions converge with them. The revision in this repository quantifies every hypothesis that the published version left as "sufficiently regular", repairs four proofs, and adds rates, domains and an explicit error budget for simulating the theory on a quantum computer.</p>
+<h2>The three documents</h2>
+<ul><li>**<code>free_fermion_cft_v5.tex</code>** is the revision, 97 pages. Start at its title-page note, which says what it is and what it is not.</li><li>**<code>critical-reread.tex</code><strong> is the eight-finding audit that prompted the revision, 8 pages. It uses the numbering of the </strong>published** article, not of the revision.</li><li>**<code>zini-wang-comparison.tex</code>** is a separate 9-page note settling one comparison the introduction makes, and is where the multiplicity criterion is proved.</li></ul>
+</main>
+</body>
+</html>

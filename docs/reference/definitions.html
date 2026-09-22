@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Definitions — lattice CFT</title>
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  main.doc { max-width: 90ch; margin: 0 auto; padding: 26px 22px 60px; }
+  main.doc table { border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  main.doc th, main.doc td { text-align: left; padding: 5px 11px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  main.doc h1 { font-size: 1.5rem; } main.doc h2 { font-size: 1.18rem; margin-top: 1.7em; }
+  main.doc pre { background: var(--soft); padding: 11px 13px; border-radius: 6px; overflow-x: auto; }
+  main.doc blockquote { border-left: 3px solid var(--line); margin: 12px 0; padding: 2px 14px; color: var(--mute); }
+  main.doc .crumb { font-size: .88rem; color: var(--mute); margin-bottom: 18px; }
+</style>
+</head>
+<body>
+<main class="doc">
+<p class="crumb"><a href="../index.html">&larr; interactive companion</a> &middot;
+   <a href="index.html">reference index</a></p>
+<h1>Definitions</h1>
+<p>The objects the results are about, in words. Precise statements are in the revision at the numbers given; <a href="results.html">results.md</a> links each to its page.</p>
+<h2>The chain of lattices</h2>
+<p>At scale <code>N</code> the circle carries <code>#Λ_N</code> sites at spacing <code>ε_N = 2^{-N} L</code>, and on each site a fermionic degree of freedom. Finer lattices are larger <code>N</code>. The question is what happens as <code>N → ∞</code>, and the answer has to say in what sense the algebras at different scales are comparable at all.</p>
+<h2>Two renormalization groups (Definitions 3.2 and 3.16)</h2>
+<p>A renormalization group here is a family of maps embedding the scale-<code>N</code> description into the scale-<code>N+1</code> one, compatibly.</p>
+<ul><li>The <strong>wavelet</strong> group is built from a compactly supported Daubechies scaling function of order <code>K</code>. Its virtue is locality: it maps one lattice site into an interval of width <code>ε_N(2K−1)</code> lying entirely to that site's right, a strict one-sided light cone with no tail (Remark 3.8). Its cost is that the scaling function enters every estimate, which is where the regularity hypotheses come from.</li><li>The <strong>momentum-cutoff</strong> group simply restricts to the momenta the lattice can represent. It is not local in real space — its kernel decays only like the reciprocal of the distance — but no scaling function appears in its symbol, so it carries no regularity hypothesis and gives better rates.</li></ul>
+<p>The revision uses both, and part of its work is saying precisely what each is good for. With re-centring the two are equivalent in rate, so the wavelet group's locality comes for free.</p>
+<h2>Re-centring (Remark 3.5)</h2>
+<p>Daubechies scaling functions are markedly asymmetric: the centre of mass sits at 79 to 89 per cent of the way along the support. Comparing a lattice site with the <em>centre of mass</em> of the wavelet sitting on it, rather than with the site itself, removes a first-order error and gains one order in every wavelet-route rate. It is deliberately <strong>not</strong> built into the definition, for two reasons the remark gives: the re-centred maps are not compatible between scales, and re-centring the scaling function instead would destroy the dyadic structure.</p>
+<h2>The Koo–Saleur approximants (Definition 4.1)</h2>
+<p>The lattice candidates for the Virasoro generators: a specific quadratic expression in the lattice fermions whose continuum limit ought to be the generator of a conformal transformation. "Ought to" is what the theorems make precise. A modification by the indicator of the momentum lattice is needed to make them behave at the zone boundary, and the consequences of that modification are Remark 4.2.</p>
+<h2>Quasi-free states and their symbols</h2>
+<p>A quasi-free state of a fermion system is determined by a single operator, its symbol, with spectrum in the unit interval. The state is pure exactly when the symbol is a projection. The renormalization group acts on symbols by compression along an isometry, and that one observation drives the whole Zini–Wang note.</p>
+<h2>GNS multiplicity (Zini–Wang note, Proposition 3.1)</h2>
+<p>For a quasi-free state on a finite lattice the Gelfand–Naimark–Segal representation has multiplicity <code>2^{m}</code>, where <code>m</code> counts the eigenvalues of the symbol lying strictly between 0 and 1. Connecting unitaries between the representations at successive steps exist exactly when <code>m</code> is <em>constant</em>, which is a weaker demand than the state being pure. This is the criterion the article's introduction should have used, and the correction is the note's main point.</p>
+<h2>Regularity (Definition 3.12)</h2>
+<p><code>s</code> is called <code>ρ</code>-regular when its Sobolev exponent exceeds <code>ρ</code>, strictly. This replaces the published article's unquantified "sufficiently regular". Four thresholds occur, needing orders 3, 4, 7 and 9 respectively; see <a href="notation.html">notation.md</a> for why there are two exponents in play and which is which.</p>
+</main>
+</body>
+</html>
