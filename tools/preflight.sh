@@ -180,6 +180,24 @@ if [ "$RC4" -gt 1 ]; then
 elif [ -z "$HIT" ]; then
   pass "clean across $(git ls-files | wc -l | tr -d ' ') tracked files and all $(git rev-list --all | wc -l | tr -d ' ') commits"
 else fail "a file on some branch carries one of these"; echo "$HIT" | sed 's/^/         /'; fi
+# A UTF-16 blob reads as ordinary text after checkout but carries its characters with an
+# interleaved zero byte, so an ASCII pattern never matches it. Rather than guess at encodings,
+# name any such blob so a person reads it: this repository has none.
+U16=""
+for c in $(git rev-list --all); do
+  git ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
+done | sort -u -k1,1 | while read -r sha path; do
+  [ -n "$sha" ] || continue
+  B=$(git cat-file blob "$sha" 2>/dev/null | head -c 2 | od -An -tx1 | tr -d ' \n')
+  [ "$B" = "fffe" ] || [ "$B" = "feff" ] && printf '%s\n' "$path"
+done > "$TMP/u16" || true
+if [ -s "$TMP/u16" ]; then
+  fail "a UTF-16 blob is in the history; the search above cannot see inside it, so it"
+  note "proves nothing about this file. Read it, or re-encode it, or excuse it deliberately.
+  sort -u "$TMP/u16" | sed 's/^/         /'
+else pass "no UTF-16 blob, so the searches above could see every byte"
+fi
+
 # An annotated tag is an object of its own: its tagger line and its message are pushed with
 # the ref and become public, and no step above reads either, because rev-list enumerates
 # commits and trees.
@@ -320,6 +338,18 @@ if command -v gh >/dev/null 2>&1; then
     fail "positive control failed: the API did not serve its own tip, so step 7 is inconclusive"
     note "$(printf '%s' "$TIP" | tr '\n' ' ' | head -c 160)"
   fi
+  # Everything above audits THIS clone. What becomes public is the remote, so a branch that
+  # exists only there is outside the whole audit. Compare the two sets of names.
+  RREFS=$(gh api "repos/$SLUG/branches" --jq '.[].name' 2>/dev/null | sort -u || true)
+  LREFS=$(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes 2>/dev/null \
+          | sed 's|^origin/||' | sort -u)
+  printf '%s\n' "$RREFS" | sed '/^$/d' > "$TMP/rrefs"
+  printf '%s\n' "$LREFS" | sed '/^$/d' > "$TMP/lrefs"
+  ONLY=$(comm -23 "$TMP/rrefs" "$TMP/lrefs")
+  if [ -z "$RREFS" ]; then warn "could not list the remote's branches; only this clone was audited"
+  elif [ -z "$ONLY" ]; then pass "the remote has no branch this clone lacks"
+  else fail "the remote carries a branch this audit never saw"; printf '%s\n' "$ONLY" | sed 's/^/         /'; fi
+
   for sha in 69c2afa a66065d 8b4a370; do
     OUT=$(gh api "repos/$SLUG/commits/$sha" --jq '.sha' 2>&1 || true)
     if printf '%s' "$OUT" | grep -qE '^[0-9a-f]{40}$'; then fail "$sha is still served by the remote"
