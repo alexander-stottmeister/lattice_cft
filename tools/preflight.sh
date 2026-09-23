@@ -495,16 +495,30 @@ if [ "${1:-}" = "--build" ]; then
   # sentinel behind and the diff fails. Silence is no longer a pass.
   SENT=0
   for g in "$CLONE"/docs/figures/*.svg "$CLONE"/docs/data/*.json "$CLONE"/docs/reference/*.html \
-           "$CLONE"/docs/reference/results.md "$CLONE"/docs/pdf/*.pdf; do
+           "$CLONE"/docs/reference/results.md "$CLONE"/docs/pdf/*.pdf "$CLONE"/mainrefs.tex; do
     [ -f "$g" ] || continue
     printf 'PREFLIGHT SENTINEL\n' > "$g"; SENT=$((SENT+1))
   done
-  note "$SENT generated files overwritten with a sentinel before the rebuild"
+  note "$SENT fully generated files overwritten with a sentinel before the rebuild"
+  # Two files are SPLICED rather than written whole: the generator reads them, replaces the
+  # text between two markers and writes them back. A sentinel would destroy the markers and
+  # make the generator fail rather than prove it ran, so these are timestamped instead. Both
+  # were outside the sentinel list entirely, so a sync_docs.py that stopped writing them was
+  # not caught by the check written to catch exactly that.
+  SPLICED="IMPROVEMENT-PLAN.md CHANGES-v4-to-v5.md"
+  for s in $SPLICED; do [ -f "$CLONE/$s" ] && touch -t 200001010000 "$CLONE/$s"; done
   # tools/build_pdfs.sh is what produces the three PDFs under docs/pdf/, with the fixed epoch
   # that makes them reproducible. Step 8 used to compile into build/ and never run it, so the
   # three files a reader actually downloads were the ones its byte-identity claim did not
   # cover. The sentinel above is what exposed that.
+  # Order matters and the sentinel is what proved it. The two notes \input mainrefs.tex, which
+  # sync_docs.py generates from the paper's compiled aux, so the paper must be compiled first,
+  # then sync_docs.py run, and only then the three documents built. Building them first left
+  # the notes compiling against a sentinel and one PDF never written at all.
   ( cd "$CLONE" && mkdir -p build
+    pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v5.tex >/dev/null 2>&1
+    pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v5.tex >/dev/null 2>&1
+    python3 sync_docs.py
     sh tools/build_pdfs.sh
     pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v4.tex >/dev/null 2>&1
     pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v4.tex >/dev/null 2>&1
@@ -512,9 +526,15 @@ if [ "${1:-}" = "--build" ]; then
     python3 tools/make_data.py
     python3 tools/make_figures.py
     python3 tools/build_reference.py ) > "$TMP/buildlog" 2>&1 || { fail "the rebuild itself failed"; sed 's/^/         /' "$TMP/buildlog" | tail -5; }
-  LEFT=$(grep -rl '^PREFLIGHT SENTINEL$' "$CLONE"/docs 2>/dev/null | wc -l | tr -d ' ')
-  [ "$LEFT" = "0" ] || { fail "$LEFT generated file(s) were never rewritten by the rebuild"; grep -rl '^PREFLIGHT SENTINEL$' "$CLONE"/docs | sed "s|$CLONE/|         |"; }
-  if git -C "$CLONE" diff --quiet; then pass "all $SENT generated files were rewritten and are byte-identical"
+  STALE=""
+  for s in $SPLICED; do
+    [ -f "$CLONE/$s" ] || continue
+    [ -n "$(find "$CLONE/$s" -newermt '2001-01-01' 2>/dev/null)" ] || STALE="$STALE$s "
+  done
+  [ -z "$STALE" ] || { fail "a spliced file was never rewritten by the rebuild: $STALE"; }
+  LEFT=$( { grep -rl '^PREFLIGHT SENTINEL$' "$CLONE"/docs 2>/dev/null; grep -l '^PREFLIGHT SENTINEL$' "$CLONE"/mainrefs.tex 2>/dev/null; } | wc -l | tr -d ' ')
+  [ "$LEFT" = "0" ] || { fail "$LEFT generated file(s) were never rewritten by the rebuild"; { grep -rl '^PREFLIGHT SENTINEL$' "$CLONE"/docs; grep -l '^PREFLIGHT SENTINEL$' "$CLONE"/mainrefs.tex 2>/dev/null; } | sed "s|$CLONE/|         |"; }
+  if git -C "$CLONE" diff --quiet; then pass "all $SENT generated and $(printf '%s' "$SPLICED" | wc -w | tr -d ' ') spliced files were rewritten and are byte-identical"
   else fail "a committed file does not regenerate"; git -C "$CLONE" diff --stat | sed 's/^/         /'; fi
   if command -v node >/dev/null 2>&1; then
     node "$CLONE/tools/check_js.mjs" >/dev/null 2>&1 && pass "browser kernels agree with the Python" || fail "browser kernels disagree with the Python"
