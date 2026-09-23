@@ -476,10 +476,18 @@ printf '%s\n' "$PDFBLOBS" | while read -r sha path; do
           rm -f "$TMP/pg"*.pgm 2>/dev/null || true
           pdftoppm -gray -r 18 -f "$PG" -l "$PG" "$TMP/b.pdf" "$TMP/pg" 2>/dev/null || true
           # A blank page renders as nothing but the maximum grey value; any other byte is ink.
+          # If the renderer wrote NOTHING the page is not blank, it is unrendered, and a
+          # missing file must not read as an empty one: a renderer present but failing gave a
+          # clean line over a page nobody had looked at, which is the fail-open shape this
+          # script has closed five times elsewhere.
+          RENDERED=0
           for g in "$TMP/pg"*.pgm; do
             [ -f "$g" ] || continue
+            RENDERED=1
             LC_ALL=C tr -d '\377' < "$g" | tail -c +16 | LC_ALL=C tr -d '[:space:]' | head -c 1 | grep -q . && INKP="$INKP$PG "
           done
+          [ "$RENDERED" = "1" ] || INKP="$INKP$PG "
+
         else
           INKP="$INKP$PG "
         fi
