@@ -120,15 +120,22 @@ echo "3. nothing private ever entered the history"
 # Keep this list in step with the private directories .gitignore declares: an ignore rule
 # states the intent, and this step is what proves the intent held. Review found six of the ten
 # unrepresented here.
-BAD=""
-for p in 'Osborne und Stottmeister' '(^|/)refs[^/]*/' '(^|/)(additional_)?references[^/]*/' \
-         '(^|/)papers/' '(^|/)citation_screenshots?/' '(^|/)citation_shots/' '(^|/)shots/' \
-         '(^|/)cited/pdfs/' '(^|/)evidence/' 'dossier' '(^|/)PRIVATE'; do
-  HIT=$(objpaths | grep -E "$p" || true)
-  [ -n "$HIT" ] && BAD="$BAD$HIT\n"
-done
+PRIVPATS='Osborne und Stottmeister|(^|/)refs[^/]*/|(^|/)(additional_)?references[^/]*/'
+PRIVPATS="$PRIVPATS|(^|/)papers/|(^|/)citation_screenshots?/|(^|/)citation_shots/|(^|/)shots/"
+PRIVPATS="$PRIVPATS|(^|/)cited/pdfs/|(^|/)evidence/|dossier|(^|/)PRIVATE"
+BAD=$(objpaths | grep -E "$PRIVPATS" || true)
 if [ -z "$BAD" ]; then pass "no third-party or private path in any commit"
-else fail "a private path is in the history"; printf "%b" "$BAD" | sed 's/^/         /'; fi
+else fail "a private path is in the history"; printf '%s\n' "$BAD" | sed 's/^/         /'; fi
+
+# A REF NAME is pushed with the ref and becomes public exactly as a path does, and nothing
+# else here reads one: step 3's paths live inside trees, step 4 reads content, and the tag
+# check reads a tag's message and tagger but not its name. A branch called PRIVATE-referee-
+# dossier, or one named after an address, passed the whole audit. Match the SHORT name: every
+# full refname begins with refs/, which the patterns above would match on every ref alike.
+REFHIT=$(git for-each-ref --format='%(refname:short)' | grep -E "$PRIVPATS|$SECRETS" || true)
+if [ -z "$REFHIT" ]; then
+  pass "$(git for-each-ref | wc -l | tr -d ' ') refs, none carrying a private name"
+else fail "a branch or tag NAME carries one of these"; printf '%s\n' "$REFHIT" | sed 's/^/         /'; fi
 
 echo "4. no session URL, address or local path, on any branch"
 # Three traps, all three of which review demonstrated live.
