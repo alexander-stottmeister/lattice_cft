@@ -79,6 +79,22 @@ git clone --no-local --quiet "$REPO" "$CLONE"
 cd "$CLONE"
 
 echo
+echo "0. the committed auditor parses"
+# The script that RUNS is the working copy; the script that ships is the one in the clone, and
+# they are not the same file. An unterminated string was once committed and pushed while the
+# working copy ran fine, so a green audit said nothing about what a reader would get. Parse the
+# committed copy of every shell and python tool before trusting anything below.
+BADSYN=""
+for f in $(git ls-files -- 'tools/*.sh' 'tools/*.py' '*.sh'); do
+  case "$f" in
+    *.sh) sh -n "$f" 2>/dev/null || BADSYN="$BADSYN$f " ;;
+    *.py) python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$f" 2>/dev/null || BADSYN="$BADSYN$f " ;;
+  esac
+done
+if [ -z "$BADSYN" ]; then pass "every committed shell and python tool parses"
+else fail "a committed tool does not parse: $BADSYN"; fi
+
+echo
 echo "1. paths that were committed and later removed"
 # These stay in the history and stay readable after a flip. That is not automatically wrong:
 # what matters is whether their CONTENT may be published. This repository deliberately
