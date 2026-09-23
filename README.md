@@ -41,8 +41,12 @@ number quoted — is published alongside the result rather than discarded.
 **Human verification is ongoing.** Nothing in this repository has been refereed. Read every
 statement here as a claim under active verification, not as a settled result, and check anything
 you intend to rely on against the cited sources yourself. Direction, mathematical judgement and
-final responsibility are the author's. T. J. Osborne, co-author of the published article, has
-agreed to this material being made public.
+final responsibility are the author's.
+
+**Both authors have agreed to publication.** T. J. Osborne, co-author of the published article,
+has agreed to this material being made public in this form. The revision names no reviser: it is
+a revision of a paper by both of its authors, not a new work by a third party, and the changes it
+makes are itemised in `CHANGES-v4-to-v5.md` rather than attributed on its title page.
 
 ## Relation to the published article — please read before citing
 
