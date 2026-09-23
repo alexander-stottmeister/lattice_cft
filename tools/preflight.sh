@@ -653,6 +653,25 @@ if command -v gh >/dev/null 2>&1; then
   # about, and the line that omitted it was the one a reader would check for exactly that.
   gh api "repos/$SLUG" --jq '"         private=\(.private) pages=\(.has_pages) wiki=\(.has_wiki) issues=\(.has_issues) branch=\(.default_branch) forks=\(.forks_count) description=\(.description // "none")"' \
     || warn "could not read the remote settings, so step 9 shows nothing rather than nothing to show"
+  # The repository's own prose becomes public with it, and nothing here read any of it. A
+  # description, a homepage, a topic, an issue or a release note is published exactly as a
+  # file is, and none of them is in any tree, so no step above can reach them.
+  set +e
+  gh api "repos/$SLUG" --jq '"\(.description // "")\n\(.homepage // "")\n\(.topics|join(" "))"' > "$TMP/meta" 2>/dev/null
+  RM1=$?
+  gh api --paginate "repos/$SLUG/issues?state=all" --jq '.[] | "\(.title)\n\(.body // "")"' >> "$TMP/meta" 2>/dev/null
+  RM2=$?
+  gh api --paginate "repos/$SLUG/releases" --jq '.[] | "\(.name // "")\n\(.body // "")"' >> "$TMP/meta" 2>/dev/null
+  RM3=$?
+  set -e
+  if [ "$RM1" -ne 0 ] || [ "$RM2" -ne 0 ] || [ "$RM3" -ne 0 ]; then
+    warn "could not read the remote's description, issues or releases, so none were checked"
+  elif grep -qiE "$SECRETS" "$TMP/meta"; then
+    fail "the remote's own prose carries one of these"
+    grep -inE "$SECRETS" "$TMP/meta" | sed 's/^/         /'
+  else
+    pass "the remote's description, homepage, topics, issues and releases carry none of these"
+  fi
   note "decide each of these deliberately; enabling Pages is itself the flip"
 fi
 
