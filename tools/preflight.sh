@@ -107,10 +107,12 @@ cd "$CLONE"
 : > "$TMP/realpdf"; : > "$TMP/fakepdf"
 blobsof '.pdf' | while read -r sha path; do
   [ -n "$sha" ] || continue
-  # Within the first kilobyte, not at byte zero: a reader accepts a header that is preceded
-  # by other bytes, so a five-byte test at offset zero decided a genuine document was not one
-  # and no reader ever opened it.
-  if git cat-file blob "$sha" 2>/dev/null | head -c 1024 | LC_ALL=C grep -q '%PDF-'; then
+  # ASK THE READER. Every fixed rule here was wrong in one direction or the other: five bytes
+  # at offset zero missed a document with any prefix, and a substring search over a kilobyte
+  # both missed a deeper header and fired on ordinary prose that merely describes one -- this
+  # script's own comments among it. A document is what the reader can open.
+  git cat-file blob "$sha" > "$TMP/cls.pdf" 2>/dev/null || true
+  if pdfinfo "$TMP/cls.pdf" >/dev/null 2>&1; then
     printf '%s\n' "$sha" >> "$TMP/realpdf"
   else
     printf '%s %s\n' "$sha" "$path" >> "$TMP/fakepdf"
@@ -131,35 +133,49 @@ echo "0. the committed auditor parses"
 # real file; and git quotes a non-ASCII path by default, so the anchored pattern skipped it
 # and a BROKEN script at HEAD was reported as parsing. That is the defect this step exists to
 # name, in this step.
-python3 - "$TMP" <<'PYEND' > "$TMP/headsyn"
+python3 - "$TMP" <<'PYEND'
 import ast, os, subprocess, sys
 tmp = sys.argv[1]
 names = subprocess.run(["git","ls-files","-z"], capture_output=True).stdout.split(b"\0")
-bad, n, unparsed = [], 0, []
+bad, n, unparsed = [], 0, 0
 have_node = subprocess.run(["sh","-c","command -v node"], capture_output=True).returncode == 0
+def broken_py(path):
+    # Every read error, not only a syntax error. A tracked .py that is a dangling symlink or
+    # a directory raised, python exited non-zero, and under errexit the whole audit died
+    # inside this step -- before the check that would have named the link's target.
+    try:
+        src = open(path, "rb").read()
+    except OSError:
+        return True
+    try:
+        ast.parse(src)
+    except (SyntaxError, ValueError):
+        return True
+    return False
 for raw in names:
     if not raw: continue
     low = raw.lower()
-    # -z gives raw bytes, so no quoting to undo, and the extension is matched without regard
-    # to case: the blocking half once selected case-sensitively while the warning half did not.
     if low.endswith(b".sh"):
         n += 1
         if subprocess.run(["sh","-n",raw], capture_output=True).returncode: bad.append(raw)
     elif low.endswith(b".py"):
         n += 1
-        try: ast.parse(open(raw,"rb").read())
-        except SyntaxError: bad.append(raw)
+        if broken_py(raw): bad.append(raw)
     elif low.endswith(b".js") or low.endswith(b".mjs"):
         if have_node:
             n += 1
             if subprocess.run(["node","--check",raw], capture_output=True).returncode: bad.append(raw)
-        else: unparsed.append(raw)
-print(n)
-print(len(unparsed))
-for b in bad: os.write(1, b"BAD " + b + b"\n")
+        else: unparsed += 1
+# Two channels, two files. Counts and findings once shared one stream, one buffered and one
+# not, so the counts landed after the findings and the shell read each as the other. The
+# findings file is NUL-delimited, so a path holding a newline stays one record.
+with open(os.path.join(tmp,"headcount"),"w") as f:
+    f.write("%d %d\n" % (n, unparsed))
+with open(os.path.join(tmp,"headbad"),"wb") as f:
+    for b in bad: f.write(b + b"\0")
 PYEND
-NSYN=$(sed -n 1p "$TMP/headsyn"); NJS=$(sed -n 2p "$TMP/headsyn")
-BADSYN=$(sed -n '3,$p' "$TMP/headsyn" | sed 's/^BAD //')
+NSYN=$(cut -d' ' -f1 "$TMP/headcount"); NJS=$(cut -d' ' -f2 "$TMP/headcount")
+BADSYN=$(tr '\0' '\n' < "$TMP/headbad" | sed '/^$/d')
 if [ -n "$BADSYN" ]; then
   fail "a committed script does not parse"; printf '%s\n' "$BADSYN" | sed 's/^/         /'
 else pass "$NSYN scripts parse at HEAD"; fi
@@ -243,7 +259,8 @@ done | awk '{ s=$1; i=index($0," "); pth=substr($0,i+1); if (index(pth,"docs/pdf
 : > "$TMP/pdfbytes"
 while read -r sha path; do
   [ -n "$sha" ] || continue
-  git cat-file blob "$sha" 2>/dev/null | head -c 1024 | LC_ALL=C grep -q '%PDF-' && printf '%s\n' "$path" >> "$TMP/pdfbytes"
+  git cat-file blob "$sha" > "$TMP/cls.pdf" 2>/dev/null || true
+  pdfinfo "$TMP/cls.pdf" >/dev/null 2>&1 && printf '%s\n' "$path" >> "$TMP/pdfbytes"
 done < "$TMP/outside" || true
 UNEXPECTED=$(printf '%s\n' "$UNEXPECTED"; cat "$TMP/pdfbytes")
 UNEXPECTED=$(printf '%s\n' "$UNEXPECTED" | sed '/^$/d' | sort -u)
@@ -424,14 +441,20 @@ printf '%s\n' "$PDFBLOBS" | while read -r sha path; do
       BADP=""; : > "$TMP/b.all"; PG=1
       while [ "$PG" -le "$NP" ]; do
         pdftotext -f "$PG" -l "$PG" "$TMP/b.pdf" "$TMP/b.txt" 2>/dev/null || true
-        if [ -n "$(tr -d '[:space:]' < "$TMP/b.txt" 2>/dev/null | head -c 1)" ]; then
+        : > "$TMP/b.txt.new"; mv "$TMP/b.txt" "$TMP/b.txt.new" 2>/dev/null || true
+        mv "$TMP/b.txt.new" "$TMP/b.txt" 2>/dev/null || true
+        # NOT "any character". A scanned page bound into a typeset document carries a typeset
+        # PAGE NUMBER, which is extractable, so asking for one character asked nothing: the
+        # commoner shape passed. The thinnest page of the three documents published here holds
+        # 1059 non-whitespace characters, so 200 separates a page of text from a page of ink.
+        if [ "$(tr -d '[:space:]' < "$TMP/b.txt" 2>/dev/null | wc -c | tr -d ' ')" -ge 200 ]; then
           cat "$TMP/b.txt" >> "$TMP/b.all"
         else
           BADP="$BADP$PG "
         fi
         PG=$((PG+1))
       done
-      [ -n "$BADP" ] && printf '%s\n' "UNREADABLE $path: page(s) $BADP yielded no text at all" >> "$TMP/unread"
+      [ -n "$BADP" ] && printf '%s\n' "UNREADABLE $path: page(s) $BADP yielded under 200 characters, so nothing here read them" >> "$TMP/unread"
       grep -iE "$SECRETS" "$TMP/b.all" | awk -v p="$path" '{print p": "$0}'
     fi
   fi
