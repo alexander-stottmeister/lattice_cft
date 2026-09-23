@@ -38,10 +38,10 @@ trap 'rm -rf "$TMP"' EXIT
 # a finding; '/Users/' followed by a name is. The fragments are kept as well, so that this file
 # still does not contain the strings it searches for.
 P_SESS='Claude-Sess''ion:|claude''\.ai/code/session'
-P_MAIL='[A-Za-z0-9._%+-]+@gm''ail'
-P_INST='[A-Za-z0-9._%+-]+@itp''\.uni-hannover'
+P_MAIL='[A-Za-z0-9._%+-]+@gm''ail|@gm''ail\.com'
+P_INST='[A-Za-z0-9._%+-]+@itp''\.uni-hannover|@itp''\.uni-hannover\.de'
 P_HOME='/Us''ers/[A-Za-z0-9._-]+'
-P_WS='/Doc''uments/Uni'
+P_WS='/Doc''uments/Uni|Doc''uments/Uni/'
 SECRETS="$P_SESS|$P_MAIL|$P_INST|$P_HOME|$P_WS"
 
 # Every path ever written, one per line. `git rev-list --objects` prints "<sha> <path>" for
@@ -159,7 +159,9 @@ N=$(git rev-list --count --all)
 # one would be counted twice by `git log --format=%B | grep -c`.
 S=0; C=0
 for c in $(git rev-list --all); do
-  git log -1 --format=%B "$c" | grep -q "$P_SESS" && S=$((S+1))
+  # -E, because P_SESS is an alternation: basic grep would read the | literally and the
+  # check would silently never match. Every other use of these patterns already passes -E.
+  git log -1 --format=%B "$c" | grep -qE "$P_SESS" && S=$((S+1))
   git log -1 --format=%B "$c" | grep -q 'Co-Authored-By:' && C=$((C+1))
 done
 [ "$S" -eq 0 ] && pass "no session URL in any of $N commit messages" || fail "$S commit message(s) carry a session URL"
