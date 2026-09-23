@@ -63,10 +63,15 @@ objpaths() {
     | sed 's/^"//; s/"$//' | sort -u
 }
 
-# The PDFs this repository publishes, from the index rather than a shell glob. A glob does not
-# descend, while step 2 accepts anything under the docs/pdf/ prefix, so a PDF one directory
-# deeper was counted by step 2 and never opened by step 5.
-pubpdfs() { git ls-files -- docs/pdf | grep -i '\.pdf$' || true; }
+# Every distinct BLOB ever committed whose path matches the given extension, as "<sha> <path>".
+# Not a shell glob and not the index: a glob does not descend, and the index is one branch at
+# one moment, so a binary committed and then deleted, or committed on a side branch, was never
+# opened at all. Deduplicated by sha, because the same bytes at several paths need reading once.
+blobsof() {
+  for c in $(git rev-list --all); do
+    git ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
+  done | grep -iE "\\$1\"?$" | sort -u -k1,1
+}
 
 echo "Pre-flight audit of $SLUG"
 echo "  clone: $CLONE"
@@ -123,7 +128,10 @@ echo "3. nothing private ever entered the history"
 PRIVPATS='Osborne und Stottmeister|(^|/)refs[^/]*/|(^|/)(additional_)?references[^/]*/'
 PRIVPATS="$PRIVPATS|(^|/)papers/|(^|/)citation_screenshots?/|(^|/)citation_shots/|(^|/)shots/"
 PRIVPATS="$PRIVPATS|(^|/)cited/pdfs/|(^|/)evidence/|dossier|(^|/)PRIVATE"
-BAD=$(objpaths | grep -E "$PRIVPATS" || true)
+# -i, for parity with step 4, which was given it for this reason: REFS/, Evidence/ and
+# Dossier-2023.txt were all green while .gitignore's protection rests on core.ignorecase,
+# which is a property of the filesystem and not of the repository.
+BAD=$(objpaths | grep -iE "$PRIVPATS" || true)
 if [ -z "$BAD" ]; then pass "no third-party or private path in any commit"
 else fail "a private path is in the history"; printf '%s\n' "$BAD" | sed 's/^/         /'; fi
 
@@ -145,7 +153,7 @@ else
   done | sort -u
 fi
 
-REFHIT=$(git for-each-ref --format='%(refname:short)' | grep -E "$PRIVPATS|$SECRETS" || true)
+REFHIT=$(git for-each-ref --format='%(refname:short)' | grep -iE "$PRIVPATS|$SECRETS" || true)
 if [ -z "$REFHIT" ]; then
   pass "$(git for-each-ref | wc -l | tr -d ' ') refs, none carrying a private name"
 else fail "a branch or tag NAME carries one of these"; printf '%s\n' "$REFHIT" | sed 's/^/         /'; fi
@@ -189,23 +197,44 @@ echo "5. binaries: metadata as well as page content"
 # or a producer string in its metadata and its object streams, so a binary has to be read as
 # a binary and not through pdftotext alone. Both are checked below, and the SVGs separately:
 # a plotting library writes its own name, and sometimes a source path, into a comment.
-if ! command -v strings >/dev/null 2>&1; then
-  warn "strings not installed; no PDF's metadata or object streams were read at all"
-  MET=""
+PDFBLOBS=$(blobsof '.pdf')
+NPDF=$(printf '%s' "$PDFBLOBS" | grep -c . || true)
+MET=""; TXT=""
+printf '%s\n' "$PDFBLOBS" | while read -r sha path; do
+  [ -n "$sha" ] || continue
+  git cat-file blob "$sha" > "$TMP/b.pdf" 2>/dev/null || continue
+  command -v strings >/dev/null 2>&1 && strings "$TMP/b.pdf" | grep -iE "$P_HOME|$P_WS|$P_MAIL" | sed "s|^|$path: |"
+  command -v pdftotext >/dev/null 2>&1 && pdftotext "$TMP/b.pdf" - 2>/dev/null | grep -iE "$P_HOME|$P_SESS" | sed "s|^|$path: |"
+done > "$TMP/pdfhits" || true
+# A missing tool must not leave a green line over files nobody read, so each guard reports
+# separately and the pass line only claims what was actually done.
+HAVE=""
+command -v strings   >/dev/null 2>&1 && HAVE="metadata and object streams" || warn "strings not installed; no PDF's metadata or object streams were read"
+command -v pdftotext >/dev/null 2>&1 && HAVE="${HAVE:+$HAVE and }rendered text" || warn "pdftotext not installed; no PDF's rendered text was read"
+if [ -s "$TMP/pdfhits" ]; then
+  fail "a PDF embeds a local path or address"; sed 's/^/         /' "$TMP/pdfhits" | sort -u
+elif [ -z "$HAVE" ]; then
+  warn "no PDF was read at all, so nothing here is evidence"
 else
-  MET=$(pubpdfs | while IFS= read -r f; do strings "$f" | grep -iE "$P_HOME|$P_WS|$P_MAIL" || true; done)
-fi
-if [ -z "$MET" ]; then pass "$(pubpdfs | wc -l | tr -d ' ') PDFs read; no local path or address in their readable metadata or streams"
-else fail "a PDF embeds a local path or address"; echo "$MET" | sed 's/^/         /'; fi
-if command -v pdftotext >/dev/null 2>&1; then
-  TXT=$(pubpdfs | while IFS= read -r f; do pdftotext "$f" - 2>/dev/null | grep -iE "$P_HOME|$P_SESS" || true; done)
-  [ -z "$TXT" ] && pass "no such string in the rendered text either" || { fail "rendered PDF text carries one"; echo "$TXT" | sed 's/^/         /'; }
-else warn "pdftotext not installed; the rendered text of every PDF went unchecked"
+  pass "$NPDF distinct PDF blobs ever committed, read for $HAVE; clean"
 fi
 note "limit: strings cannot read a compressed object stream, so metadata inside one is not"
 note "seen here. pdfTeX leaves the Info dict uncompressed, so it is visible today."
-SVG=$(grep -l -E "$P_HOME|<!--" docs/figures/*.svg 2>/dev/null || true)
-[ -z "$SVG" ] && pass "no comments or paths in the committed SVGs" || { fail "an SVG carries a comment or a path"; echo "$SVG" | sed 's/^/         /'; }
+# The SVGs, over every ref rather than a worktree glob, and counted: the glob did not descend,
+# matched nothing at all if the figures ever moved, and its error was swallowed into a pass.
+SVGBLOBS=$(blobsof '.svg')
+NSVG=$(printf '%s' "$SVGBLOBS" | grep -c . || true)
+printf '%s\n' "$SVGBLOBS" | while read -r sha path; do
+  [ -n "$sha" ] || continue
+  git cat-file blob "$sha" 2>/dev/null | grep -lE "$P_HOME|<!--" >/dev/null 2>&1 && printf '%s\n' "$path"
+done > "$TMP/svghits" || true
+if [ -s "$TMP/svghits" ]; then
+  fail "an SVG carries a comment or a path"; sort -u "$TMP/svghits" | sed 's/^/         /'
+elif [ "$NSVG" -eq 0 ]; then
+  warn "no SVG was found in any commit, which is not what this repository should look like"
+else
+  pass "$NSVG distinct SVG blobs ever committed; no comments or paths"
+fi
 
 echo
 echo "6. authorship"
@@ -221,16 +250,32 @@ N=$(git rev-list --count --all)
 # A commit MESSAGE is published with the commit. Until now only the session pattern was
 # looked for in one, and only the author and committer FIELDS were checked for an address,
 # so a message body carrying a local path or an address passed the whole audit.
-S=0; C=0; MSGHIT=""
+# Two messages DESCRIBE the patterns they added and so carry the vocabulary without carrying a
+# leak. That is the self-reference step 4 had to solve; the script solves it by assembling its
+# patterns from fragments, and prose cannot do that and stay readable. A message cannot be
+# reworded without rewriting history and re-creating the remote, which is the author's
+# decision, not this script's. So each is named here, having been read, and printed on every
+# run. Adding to this list is a deliberate act and it is the only way past this check.
+MSG_VOCAB="4d7ca11414795072198fff46cd61bfa68d5346e1 6d0161ad22757f56b429f431ae4e1b5a29fd66d4"
+S=0; C=0; MSGHIT=""; MSGSKIP=0
 for c in $(git rev-list --all); do
   M=$(git log -1 --format=%B "$c")
   # -E, because P_SESS is an alternation: basic grep would read the | literally and the
   # check would silently never match. Every other use of these patterns already passes -E.
   printf '%s' "$M" | grep -qE "$P_SESS" && S=$((S+1))
-  printf '%s' "$M" | grep -qiE "$SECRETS" && MSGHIT="$MSGHIT$(git log -1 --format=%h "$c") "
+  # The excusal covers THIS check only. A listed commit is still counted for its trailer and
+  # still searched for a session URL, because excusing vocabulary is not excusing the commit.
+  case " $MSG_VOCAB " in
+    *" $c "*) MSGSKIP=$((MSGSKIP+1));;
+    *) printf '%s' "$M" | grep -qiE "$SECRETS" && MSGHIT="$MSGHIT$(git log -1 --format=%h "$c") ";;
+  esac
   printf '%s' "$M" | grep -q 'Co-Authored-By:' && C=$((C+1))
 done
-if [ -z "$MSGHIT" ]; then pass "no address or local path in any commit message body"
+if [ -z "$MSGHIT" ]; then
+  pass "no address or local path in any commit message body ($MSGSKIP read and excused below)"
+  for c in $MSG_VOCAB; do git log -1 --format='         excused: %h %s' "$c" 2>/dev/null; done
+  note "each was read: it quotes the patterns it added, which is vocabulary and not a leak."
+  note "Rewording needs history rewritten and the remote re-created; that is a decision."
 else
   fail "a commit message carries one of these"
   for c in $MSGHIT; do
