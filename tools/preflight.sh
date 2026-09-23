@@ -11,6 +11,12 @@
 # The checklist is due to the glimm_jaffe session, which ran the same exercise on a sibling
 # repository; the traps recorded in steps 5, 7 and 10 are ones that caught somebody out there.
 set -eu
+# Every search here runs in the C locale. git grep in a UTF-8 locale stops at the first
+# invalid byte of a line, so an ordinary single-byte-encoded note -- no NUL, so not named by
+# the binary rule -- hid an address and a home path from step 4 on this machine while the
+# same clone and the same script found both under LC_ALL=C. It also makes sort and comm
+# order bytes rather than collate, which is what the set comparisons in steps 1 and 7 assume.
+export LC_ALL=C
 
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 SLUG=alexander-stottmeister/lattice_cft
@@ -329,7 +335,7 @@ fi
 # step 3. Read every link target ever committed.
 for c in $(allroots); do
   git ls-tree -r "$c" | sed -n 's/^120000 blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
-done | sort -u -k1,1 > "$TMP/links" || true
+done | sort -u > "$TMP/links" || true   # by line, not by blob: two links sharing one target are two links
 : > "$TMP/linkhits"
 while read -r sha path; do
   [ -n "$sha" ] || continue
