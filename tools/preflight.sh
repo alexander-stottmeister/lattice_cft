@@ -252,9 +252,11 @@ echo "1. paths that were committed and later removed"
 # what matters is whether their CONTENT may be published. This repository deliberately
 # untracked some build output, so this step only lists them: it has no failing branch at
 # all. A removed path whose NAME is on step 3's private list is caught there, over every
-# object in the history. Step 3 reads names and not content, and step 4 greps only the
-# tracked tree, so a deleted file with an innocuous name and private content is caught by
-# nobody: the list this step prints is for a human to read.
+# object in the history, and its CONTENT is reached by step 4, which greps every commit's
+# tree rather than the checked-out one -- so a deleted file carrying an address or a path is
+# caught after all. What survives both is a deleted file with an innocuous name whose content
+# matches no pattern: private by meaning rather than by shape. The list this step prints is
+# for a human to read, and that is the residue it is for.
 # -m diffs merge commits against each parent. Without it a path introduced by a merge and
 # later deleted appears nowhere in this list, which is the human backstop the steps below
 # lean on.
@@ -482,7 +484,10 @@ printf '%s\n' "$PDFBLOBS" | while read -r sha path; do
           # script has closed five times elsewhere.
           RENDERED=0
           for g in "$TMP/pg"*.pgm; do
-            [ -f "$g" ] || continue
+            # -s, not -f. An existence test distinguished a missing file from a present one
+            # and not from an empty one, so a renderer exiting cleanly having written nothing
+            # restored the very fail-open the guard was added to close.
+            [ -s "$g" ] || continue
             RENDERED=1
             LC_ALL=C tr -d '\377' < "$g" | tail -c +16 | LC_ALL=C tr -d '[:space:]' | head -c 1 | grep -q . && INKP="$INKP$PG "
           done
