@@ -205,13 +205,28 @@ else fail "a commit carries a real address"; echo "$IDS" | sed 's/^/         /';
 N=$(git rev-list --count --all)
 # count COMMITS, not lines: a commit message that discusses the trailer as well as carrying
 # one would be counted twice by `git log --format=%B | grep -c`.
-S=0; C=0
+# A commit MESSAGE is published with the commit. Until now only the session pattern was
+# looked for in one, and only the author and committer FIELDS were checked for an address,
+# so a message body carrying a local path or an address passed the whole audit.
+S=0; C=0; MSGHIT=""
 for c in $(git rev-list --all); do
+  M=$(git log -1 --format=%B "$c")
   # -E, because P_SESS is an alternation: basic grep would read the | literally and the
   # check would silently never match. Every other use of these patterns already passes -E.
-  git log -1 --format=%B "$c" | grep -qE "$P_SESS" && S=$((S+1))
-  git log -1 --format=%B "$c" | grep -q 'Co-Authored-By:' && C=$((C+1))
+  printf '%s' "$M" | grep -qE "$P_SESS" && S=$((S+1))
+  printf '%s' "$M" | grep -qiE "$SECRETS" && MSGHIT="$MSGHIT$(git log -1 --format=%h "$c") "
+  printf '%s' "$M" | grep -q 'Co-Authored-By:' && C=$((C+1))
 done
+if [ -z "$MSGHIT" ]; then pass "no address or local path in any commit message body"
+else
+  fail "a commit message carries one of these"
+  for c in $MSGHIT; do
+    git log -1 --format='         %h %s' "$c"
+    git log -1 --format=%B "$c" | grep -inE "$SECRETS" | sed 's/^/           line /'
+  done
+  note "a message cannot be edited without rewriting history, so judge each: text that"
+  note "DISCUSSES these patterns is vocabulary, an actual address or path is a leak."
+fi
 [ "$S" -eq 0 ] && pass "no session URL in any of $N commit messages" || fail "$S commit message(s) carry a session URL"
 if [ "$C" -eq "$N" ]; then pass "$C Co-Authored-By trailers for $N commits"; else
   note "$C Co-Authored-By trailers for $N commits; these lack one:"
