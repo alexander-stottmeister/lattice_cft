@@ -193,7 +193,7 @@ done | sort -u -k1,1 | while read -r sha path; do
 done > "$TMP/u16" || true
 if [ -s "$TMP/u16" ]; then
   fail "a UTF-16 blob is in the history; the search above cannot see inside it, so it"
-  note "proves nothing about this file. Read it, or re-encode it, or excuse it deliberately.
+  note "proves nothing about this file. Read it, re-encode it, or excuse it deliberately."
   sort -u "$TMP/u16" | sed 's/^/         /'
 else pass "no UTF-16 blob, so the searches above could see every byte"
 fi
