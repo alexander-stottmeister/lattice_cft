@@ -581,7 +581,9 @@ N=$(git rev-list --count --all)
 # reworded without rewriting history and re-creating the remote, which is the author's
 # decision, not this script's. So each is named here, having been read, and printed on every
 # run. Adding to this list is a deliberate act and it is the only way past this check.
-MSG_VOCAB="4d7ca11414795072198fff46cd61bfa68d5346e1 6d0161ad22757f56b429f431ae4e1b5a29fd66d4"
+# The two hashes moved when the co-authorship trailers were made uniform, which rewrote every
+# message; the guard below reports a stale entry rather than dying on one, and it did its job.
+MSG_VOCAB="b26c5cee34cd0c5756482c9d6647c574db0e56bb 39fe2d28925ef5a4121218f0fa53193f24be179d"
 S=0; C=0; MSGHIT=""; MSGSKIP=0
 for c in $(git rev-list --all); do
   M=$(git log -1 --format=%B "$c")
@@ -608,8 +610,8 @@ if [ -z "$MSGHIT" ]; then
       warn "excused commit $c is not in this history; the list is stale after a rewrite"
     fi
   done
-  note "both were read. 6d0161a quotes bare domains and a path fragment, with no local part"
-  note "and no user name: vocabulary. 4d7ca11 names an EXAMPLE branch that is a syntactically"
+  note "both were read. 39fe2d2 quotes bare domains and a path fragment, with no local part"
+  note "and no user name: vocabulary. b26c5ce names an EXAMPLE branch that is a syntactically"
   note "complete address; it is fabricated and is not the author's, so publishing it is a"
   note "knowing decision rather than a leak. Rewording either needs history rewritten and the"
   note "remote re-created."
