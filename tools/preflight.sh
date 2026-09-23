@@ -30,12 +30,27 @@ trap 'rm -rf "$TMP"' EXIT
 # does not contain them literally and therefore does not match itself. Written out, step 4
 # fails on the auditor: it passed while the script was still untracked, because a clone
 # cannot see an untracked file, and failed the moment the script was committed.
-P_SESS='Claude-Sess''ion'
-P_MAIL='@gm''ail'
-P_INST='@itp''\.uni-hannover'
-P_HOME='/Us''ers/'
-P_WS='Documents''/Uni'
+# Each pattern describes an ACTUAL leak, not the vocabulary of one. The looser forms fired on
+# any text that merely discussed them -- including this script's own history, where the version
+# committed in c5636a7 carries the pattern list inline and nothing else. A check that fails on
+# a list of patterns trains its reader to ignore it, and the list is not private: the fragments
+# below sit in the published file, where anyone can reassemble them. So a bare '/Users/' is not
+# a finding; '/Users/' followed by a name is. The fragments are kept as well, so that this file
+# still does not contain the strings it searches for.
+P_SESS='Claude-Sess''ion:|claude''\.ai/code/session'
+P_MAIL='[A-Za-z0-9._%+-]+@gm''ail'
+P_INST='[A-Za-z0-9._%+-]+@itp''\.uni-hannover'
+P_HOME='/Us''ers/[A-Za-z0-9._-]+'
+P_WS='/Doc''uments/Uni'
 SECRETS="$P_SESS|$P_MAIL|$P_INST|$P_HOME|$P_WS"
+
+# Every path ever written, one per line. `git rev-list --objects` prints "<sha> <path>" for
+# blobs and trees and a bare "<sha>" for commits, and A PATH MAY CONTAIN SPACES. Splitting on
+# whitespace with `awk '{print $2}'` truncates at the first space, which let this project's own
+# third-party PDF -- its name has spaces -- past steps 2 and 3 with a green line, and made the
+# pattern written for exactly that file dead code, since it contains spaces and the field never
+# did. Take everything after the sha, and drop the commit lines, which have no path.
+objpaths() { git rev-list --objects --all | sed -n 's/^[0-9a-f]\{40\} //p' | sort -u; }
 
 echo "Pre-flight audit of $SLUG"
 echo "  clone: $CLONE"
@@ -51,7 +66,10 @@ echo "1. paths that were committed and later removed"
 # object in the history. Step 3 reads names and not content, and step 4 greps only the
 # tracked tree, so a deleted file with an innocuous name and private content is caught by
 # nobody: the list this step prints is for a human to read.
-git log --all --diff-filter=A --name-only --format= | sed '/^$/d' | sort -u > "$TMP/added"
+# -m diffs merge commits against each parent. Without it a path introduced by a merge and
+# later deleted appears nowhere in this list, which is the human backstop the steps below
+# lean on.
+git log --all -m --diff-filter=A --name-only --format= | sed '/^$/d' | sort -u > "$TMP/added"
 git ls-files | sort -u > "$TMP/tracked"
 comm -23 "$TMP/added" "$TMP/tracked" > "$TMP/gone"
 if [ ! -s "$TMP/gone" ]; then
@@ -65,7 +83,7 @@ fi
 echo "2. only the intended PDFs, in the history as well as the tree"
 # NOTE: this repository deliberately publishes three PDFs. The check is that there are no
 # OTHERS, and the stronger form looks at every blob ever written, not just what is tracked.
-UNEXPECTED=$(git rev-list --objects --all | awk '{print $2}' | grep -i '\.pdf$' | sort -u | grep -v '^docs/pdf/' || true)
+UNEXPECTED=$(objpaths | grep -i '\.pdf$' | grep -v '^docs/pdf/' || true)
 if [ -z "$UNEXPECTED" ]; then
   pass "only docs/pdf/ ($(git ls-files 'docs/pdf/*.pdf' | wc -l | tr -d ' ') files) has ever held a PDF"
 else
@@ -83,18 +101,31 @@ echo "3. nothing private ever entered the history"
 # than ^ or a bare slash: '^refs/' misses sub/refs/x, '/evidence/' misses a top-level
 # evidence/x because there is no parent to supply the slash, and '^PRIVATE' misses
 # sub/PRIVATE-x. Review planted exactly those and step 3 passed.
+# Keep this list in step with the private directories .gitignore declares: an ignore rule
+# states the intent, and this step is what proves the intent held. Review found six of the ten
+# unrepresented here.
 BAD=""
-for p in 'Osborne und Stottmeister' '(^|/)refs/' '(^|/)evidence/' 'citation_screenshot' 'dossier' '(^|/)PRIVATE'; do
-  HIT=$(git rev-list --objects --all | awk '{print $2}' | grep -E "$p" | sort -u || true)
+for p in 'Osborne und Stottmeister' '(^|/)refs[^/]*/' '(^|/)(additional_)?references[^/]*/' \
+         '(^|/)papers/' '(^|/)citation_screenshots?/' '(^|/)citation_shots/' '(^|/)shots/' \
+         '(^|/)cited/pdfs/' '(^|/)evidence/' 'dossier' '(^|/)PRIVATE'; do
+  HIT=$(objpaths | grep -E "$p" || true)
   [ -n "$HIT" ] && BAD="$BAD$HIT\n"
 done
 if [ -z "$BAD" ]; then pass "no third-party or private path in any commit"
 else fail "a private path is in the history"; printf "%b" "$BAD" | sed 's/^/         /'; fi
 
-echo "4. no session URL, address or local path in tracked content"
-HIT=$(git grep -l -I -E "$SECRETS" -- . || true)
-if [ -z "$HIT" ]; then pass "clean across $(git ls-files | wc -l | tr -d ' ') tracked files"
-else fail "a tracked file carries one of these"; echo "$HIT" | sed 's/^/         /'; fi
+echo "4. no session URL, address or local path, on any branch"
+# Three traps, all three of which review demonstrated live.
+#   -I skips anything git calls binary, and one NUL byte is enough to earn that label, so a
+#   plain text file with a stray NUL hid an address from this grep. Search binaries too.
+#   Without -i, a path or address that differs only in case walks through, and step 5's
+#   equivalent search has always been case-insensitive, so the pair disagreed.
+#   Grepping the worktree reads ONE branch. Steps 2 and 3 read every ref, so a side branch
+#   could carry in content what those two would have caught in a name.
+HIT=$(git grep -l -i -E "$SECRETS" $(git rev-list --all) -- . 2>/dev/null | sort -u || true)
+if [ -z "$HIT" ]; then
+  pass "clean across $(git ls-files | wc -l | tr -d ' ') tracked files and all $(git rev-list --all | wc -l | tr -d ' ') commits"
+else fail "a file on some branch carries one of these"; echo "$HIT" | sed 's/^/         /'; fi
 
 echo
 echo "5. binaries: metadata as well as page content"
@@ -103,27 +134,31 @@ echo "5. binaries: metadata as well as page content"
 # a binary and not through pdftotext alone. Both are checked below, and the SVGs separately:
 # a plotting library writes its own name, and sometimes a source path, into a comment.
 MET=$(for f in docs/pdf/*.pdf; do strings "$f" | grep -iE "$P_HOME|$P_WS|$P_MAIL" || true; done)
-if [ -z "$MET" ]; then pass "no local path or address in any PDF's metadata or streams"
+if [ -z "$MET" ]; then pass "no local path or address in any PDF's readable metadata or streams"
 else fail "a PDF embeds a local path or address"; echo "$MET" | sed 's/^/         /'; fi
 if command -v pdftotext >/dev/null 2>&1; then
   TXT=$(for f in docs/pdf/*.pdf; do pdftotext "$f" - 2>/dev/null | grep -iE "$P_HOME|$P_SESS" || true; done)
   [ -z "$TXT" ] && pass "no such string in the rendered text either" || { fail "rendered PDF text carries one"; echo "$TXT" | sed 's/^/         /'; }
-else note "pdftotext not installed; rendered text not checked"
+else warn "pdftotext not installed; the rendered text of every PDF went unchecked"
 fi
+note "limit: strings cannot read a compressed object stream, so metadata inside one is not"
+note "seen here. pdfTeX leaves the Info dict uncompressed, so it is visible today."
 SVG=$(grep -l -E "$P_HOME|<!--" docs/figures/*.svg 2>/dev/null || true)
 [ -z "$SVG" ] && pass "no comments or paths in the committed SVGs" || { fail "an SVG carries a comment or a path"; echo "$SVG" | sed 's/^/         /'; }
 
 echo
 echo "6. authorship"
-IDS=$(git log --format='%ae %ce' | tr ' ' '\n' | sort -u)
+# --all, not the checked-out branch: steps 2 and 3 read every ref, and an address that
+# reaches the remote on a side branch is just as public.
+IDS=$(git log --all --format='%ae %ce' | tr ' ' '\n' | sort -u)
 if [ "$(echo "$IDS" | grep -cv 'users\.noreply\.github\.com')" -eq 0 ]; then
   pass "every author and committer is the GitHub noreply address"
 else fail "a commit carries a real address"; echo "$IDS" | sed 's/^/         /'; fi
-N=$(git rev-list --count HEAD)
+N=$(git rev-list --count --all)
 # count COMMITS, not lines: a commit message that discusses the trailer as well as carrying
 # one would be counted twice by `git log --format=%B | grep -c`.
 S=0; C=0
-for c in $(git rev-list HEAD); do
+for c in $(git rev-list --all); do
   git log -1 --format=%B "$c" | grep -q "$P_SESS" && S=$((S+1))
   git log -1 --format=%B "$c" | grep -q 'Co-Authored-By:' && C=$((C+1))
 done
@@ -167,7 +202,7 @@ if command -v gh >/dev/null 2>&1; then
     if printf '%s' "$OUT" | grep -qE '^[0-9a-f]{40}$'; then fail "$sha is still served by the remote"
     else pass "$sha is not served"; fi
   done
-else note "gh not installed; remote not checked"
+else warn "gh not installed, so the whole of step 7 went unrun, positive control included"
 fi
 
 echo
@@ -184,8 +219,11 @@ if [ "${1:-}" = "--build" ]; then
     python3 tools/build_reference.py >/dev/null ) || { fail "the rebuild itself failed"; }
   if git -C "$CLONE" diff --quiet; then pass "every generated file is byte-identical after a rebuild"
   else fail "a committed file does not regenerate"; git -C "$CLONE" diff --stat | sed 's/^/         /'; fi
-  command -v node >/dev/null 2>&1 && { node "$CLONE/tools/check_js.mjs" >/dev/null 2>&1 && pass "browser kernels agree with the Python" || fail "browser kernels disagree with the Python"; }
-  command -v node >/dev/null 2>&1 && { node "$CLONE/tools/check_widgets.mjs" >/dev/null 2>&1 && pass "every widget renders across its control range" || fail "a widget fails to render"; }
+  if command -v node >/dev/null 2>&1; then
+    node "$CLONE/tools/check_js.mjs" >/dev/null 2>&1 && pass "browser kernels agree with the Python" || fail "browser kernels disagree with the Python"
+    node "$CLONE/tools/check_widgets.mjs" >/dev/null 2>&1 && pass "every widget renders across its control range" || fail "a widget fails to render"
+  else warn "node not installed; the browser kernels and every widget went unchecked"
+  fi
 else
   note "skipped; pass --build to compile and diff (needs pdflatex, numpy and node)"
 fi
