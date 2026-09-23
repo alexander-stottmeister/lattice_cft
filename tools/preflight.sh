@@ -124,16 +124,26 @@ for c in $(git rev-list --all); do
 done | grep -iE '\.(sh|py|mjs|js)"?$' | sort -u -k1,1 | while read -r sha path; do
   [ -n "$sha" ] || continue
   git cat-file blob "$sha" > "$TMP/blob.src" 2>/dev/null || continue
-  case "$path" in
+  # Strip the quotes ls-tree adds to a path with an unusual character before deciding what
+  # this is: the grep above allows the trailing quote and the case below forbade it, so such
+  # a blob was read and then dropped, counted as parsed without ever being parsed. The same
+  # gap swallowed every .js and .mjs, which is four of the files the published site serves.
+  clean=$(printf '%s' "$path" | sed 's/^"//; s/"$//')
+  case "$clean" in
     *.sh)  sh -n "$TMP/blob.src" 2>/dev/null || printf '%s %s\n' "$sha" "$path" >> "$TMP/oldsyn" ;;
     *.py)  python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$TMP/blob.src" 2>/dev/null || printf '%s %s\n' "$sha" "$path" >> "$TMP/oldsyn" ;;
+    *.mjs|*.js)
+      if command -v node >/dev/null 2>&1; then
+        cp "$TMP/blob.src" "$TMP/blob.mjs"
+        node --check "$TMP/blob.mjs" 2>/dev/null || printf '%s %s\n' "$sha" "$path" >> "$TMP/oldsyn"
+      fi ;;
   esac
 done || true
 if [ -s "$TMP/oldsyn" ]; then
   warn "$(grep -c . < "$TMP/oldsyn" || true) script blob(s) in the history do not parse"
   while read -r sha path; do
     printf '         %s %s  (in %s)\n' "$(printf '%s' "$sha" | cut -c1-7)" "$path" \
-      "$(git rev-list --all --objects | grep "^$sha" >/dev/null 2>&1 && git log --all --oneline --find-object="$sha" | head -1 | cut -d' ' -f1 || echo '?')"
+      "$(git log --all --oneline --find-object="$sha" | tail -1 | cut -d' ' -f1)"
   done < "$TMP/oldsyn"
   note "a broken intermediate version is published with the history; it is not what ships."
 else pass "every script blob in the history parses too"
@@ -168,7 +178,20 @@ fi
 echo "2. only the intended PDFs, in the history as well as the tree"
 # NOTE: this repository deliberately publishes three PDFs. The check is that there are no
 # OTHERS, and the stronger form looks at every blob ever written, not just what is tracked.
+# By extension AND by leading bytes: the project's own third-party PDF committed under another
+# suffix drew a clean line here while step 4 blocked it on an unrelated ground, two checks
+# disagreeing about one object.
 UNEXPECTED=$(objpaths | grep -i '\.pdf$' | grep -v '^docs/pdf/' || true)
+for c in $(git rev-list --all); do
+  git ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
+done | sort -u -k1,1 | grep -v ' docs/pdf/' > "$TMP/outside" || true
+: > "$TMP/pdfbytes"
+while read -r sha path; do
+  [ -n "$sha" ] || continue
+  [ "$(git cat-file blob "$sha" 2>/dev/null | head -c 5)" = "%PDF-" ] && printf '%s\n' "$path" >> "$TMP/pdfbytes"
+done < "$TMP/outside" || true
+UNEXPECTED=$(printf '%s\n' "$UNEXPECTED"; cat "$TMP/pdfbytes")
+UNEXPECTED=$(printf '%s\n' "$UNEXPECTED" | sed '/^$/d' | sort -u)
 if [ -z "$UNEXPECTED" ]; then
   pass "only docs/pdf/ ever held a PDF; $(blobsof '.pdf' | grep -c . || true) distinct PDF blobs in all"
 else
@@ -289,9 +312,15 @@ fi
 # An annotated tag is an object of its own: its tagger line and its message are pushed with
 # the ref and become public, and no step above reads either, because rev-list enumerates
 # commits and trees.
+# cat-file -p on a tag prints the tag object; ^{} dereferences it to whatever it finally
+# points at, which may be a BLOB, and a tag pointing straight at a blob publishes content that
+# no tree contains and nothing else here reads.
 TAGHIT=""
 for tg in $(git for-each-ref --format='%(refname)' refs/tags 2>/dev/null); do
   git cat-file -p "$tg" 2>/dev/null | grep -qiE "$SECRETS" && TAGHIT="$TAGHIT$tg "
+  if [ "$(git cat-file -t "${tg}^{}" 2>/dev/null)" = "blob" ]; then
+    git cat-file blob "${tg}^{}" 2>/dev/null | grep -qiE "$SECRETS" && TAGHIT="$TAGHIT${tg}(blob) "
+  fi
 done
 if [ -z "$TAGHIT" ]; then
   pass "$(git for-each-ref refs/tags | wc -l | tr -d ' ') tags, none carrying one in its message or tagger"
@@ -310,18 +339,31 @@ else pass "every .pdf blob really is a PDF, so the readers below can decode all 
 fi
 PDFBLOBS=$(blobsof '.pdf')
 NPDF=$(printf '%s' "$PDFBLOBS" | grep -c . || true)
-MET=""; TXT=""
+MET=""; TXT=""; : > "$TMP/unread"
 printf '%s\n' "$PDFBLOBS" | while read -r sha path; do
   [ -n "$sha" ] || continue
   git cat-file blob "$sha" > "$TMP/b.pdf" 2>/dev/null || continue
   command -v strings >/dev/null 2>&1 && strings "$TMP/b.pdf" | grep -iE "$P_HOME|$P_WS|$P_MAIL" | sed "s|^|$path: |"
-  command -v pdftotext >/dev/null 2>&1 && pdftotext "$TMP/b.pdf" - 2>/dev/null | grep -iE "$P_HOME|$P_SESS" | sed "s|^|$path: |"
+  # Require the reader to have SUCCEEDED. Five magic bytes followed by anything, or a document
+  # truncated past its trailer, were counted among the files "read" while neither reader could
+  # decode a word of them. A file nobody could read is not a clean file.
+  if command -v pdftotext >/dev/null 2>&1; then
+    if pdftotext "$TMP/b.pdf" "$TMP/b.txt" 2>/dev/null && [ -s "$TMP/b.txt" ]; then
+      grep -iE "$P_HOME|$P_SESS" "$TMP/b.txt" | sed "s|^|$path: |"
+    else
+      printf '%s\n' "UNREADABLE $path: pdftotext produced no text" >> "$TMP/unread"
+    fi
+  fi
 done > "$TMP/pdfhits" || true
 # A missing tool must not leave a green line over files nobody read, so each guard reports
 # separately and the pass line only claims what was actually done.
 HAVE=""
 command -v strings   >/dev/null 2>&1 && HAVE="metadata and object streams" || warn "strings not installed; no PDF's metadata or object streams were read"
 command -v pdftotext >/dev/null 2>&1 && HAVE="${HAVE:+$HAVE and }rendered text" || warn "pdftotext not installed; no PDF's rendered text was read"
+if [ -s "$TMP/unread" ]; then
+  fail "a PDF could not be read at all, so calling it clean would mean nothing"
+  sort -u "$TMP/unread" | sed 's/^/         /'
+fi
 if [ -s "$TMP/pdfhits" ]; then
   fail "a PDF embeds a local path or address"; sed 's/^/         /' "$TMP/pdfhits" | sort -u
 elif [ -z "$HAVE" ]; then
@@ -548,7 +590,10 @@ fi
 echo
 echo "9. remote settings"
 if command -v gh >/dev/null 2>&1; then
-  gh api "repos/$SLUG" --jq '"         private=\(.private) wiki=\(.has_wiki) issues=\(.has_issues) branch=\(.default_branch) forks=\(.forks_count) description=\(.description // "none")"' || true
+  # has_pages belongs here above all: enabling Pages IS the visibility change step 10 is
+  # about, and the line that omitted it was the one a reader would check for exactly that.
+  gh api "repos/$SLUG" --jq '"         private=\(.private) pages=\(.has_pages) wiki=\(.has_wiki) issues=\(.has_issues) branch=\(.default_branch) forks=\(.forks_count) description=\(.description // "none")"' \
+    || warn "could not read the remote settings, so step 9 shows nothing rather than nothing to show"
   note "decide each of these deliberately; enabling Pages is itself the flip"
 fi
 

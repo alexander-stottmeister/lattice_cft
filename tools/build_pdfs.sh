@@ -15,13 +15,21 @@ mkdir -p build docs/pdf
 for f in free_fermion_cft_v5 critical-reread zini-wang-comparison; do
   PREV=""
   N=0
+  SETTLED=0
   while [ "$N" -lt 5 ]; do
     pdflatex -interaction=nonstopmode -output-directory=build "$f.tex" >/dev/null
     N=$((N+1))
     NOW=$(cksum < "build/$f.pdf")
-    [ "$NOW" = "$PREV" ] && break
+    [ "$NOW" = "$PREV" ] && SETTLED=1 && break
     PREV=$NOW
   done
+  # The cap must not be silent. Hitting it means the output was still changing, so the file
+  # copied is not the one a further pass would produce, and saying "settled" over it states
+  # the opposite of the truth. This script is what the README points a reader at.
+  if [ "${SETTLED:-0}" != "1" ]; then
+    echo "  $f.pdf  STILL CHANGING after $N passes; not copied" >&2
+    exit 1
+  fi
   cp "build/$f.pdf" "docs/pdf/$f.pdf"
   echo "  $f.pdf  $(pdfinfo "docs/pdf/$f.pdf" | awk '/^Pages/{print $2}') pages, settled after $N passes"
 done
