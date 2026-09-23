@@ -104,20 +104,30 @@ cd "$CLONE"
 # Which .pdf-named blobs really are PDFs. The exclusion in step 4 is by extension while the
 # readers in step 5 are not, so a gzip named .pdf was skipped by one and counted as read by
 # the other. Decide once, by the magic bytes, and let both steps use the answer.
-: > "$TMP/realpdf"; : > "$TMP/fakepdf"
-blobsof '.pdf' | while read -r sha path; do
-  [ -n "$sha" ] || continue
-  # ASK THE READER. Every fixed rule here was wrong in one direction or the other: five bytes
-  # at offset zero missed a document with any prefix, and a substring search over a kilobyte
-  # both missed a deeper header and fired on ordinary prose that merely describes one -- this
-  # script's own comments among it. A document is what the reader can open.
-  git cat-file blob "$sha" > "$TMP/cls.pdf" 2>/dev/null || true
-  if pdfinfo "$TMP/cls.pdf" >/dev/null 2>&1; then
-    printf '%s\n' "$sha" >> "$TMP/realpdf"
-  else
-    printf '%s %s\n' "$sha" "$path" >> "$TMP/fakepdf"
-  fi
-done || true
+# ONE list of documents, built by asking the reader about every blob, wherever it sits and
+# whatever it is called. Selecting by suffix left a reader-openable document inside the
+# published directory under another name counted by nothing at all: the directory is excluded
+# from the search outside it, and the readers were pointed only at names ending .pdf.
+: > "$TMP/realpdf"; : > "$TMP/fakepdf"; : > "$TMP/alldocs"
+if ! command -v pdfinfo >/dev/null 2>&1; then
+  DOCS_UNCLASSIFIED=1
+else
+  DOCS_UNCLASSIFIED=0
+  for c in $(allroots); do
+    git ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
+  done | sort -u -k1,1 | while read -r sha path; do
+    [ -n "$sha" ] || continue
+    git cat-file blob "$sha" > "$TMP/cls.pdf" 2>/dev/null || true
+    if pdfinfo "$TMP/cls.pdf" >/dev/null 2>&1; then
+      printf '%s\n' "$sha" >> "$TMP/realpdf"
+      printf '%s %s\n' "$sha" "$path" >> "$TMP/alldocs"
+    else
+      case "$path" in
+        *.pdf|*.pdf\") printf '%s %s\n' "$sha" "$path" >> "$TMP/fakepdf" ;;
+      esac
+    fi
+  done || true
+fi
 
 echo
 echo "0. the committed auditor parses"
@@ -247,23 +257,11 @@ echo "2. only the intended PDFs, in the history as well as the tree"
 # suffix drew a clean line here while step 4 blocked it on an unrelated ground, two checks
 # disagreeing about one object.
 UNEXPECTED=$(objpaths | grep -i '\.pdf$' | grep -v '^docs/pdf/' || true)
-# Drop the allowed directory BEFORE deduplicating, not after. `sort -u -k1,1` keeps one line
-# per blob, so a real document at a private path that is byte-identical to an allowed one
-# survived only under the allowed path and the filter then removed it entirely: the same
-# enumeration defect this script has now fixed twice, back inside the check written to close
-# it. Quoting is off, so the filter sees the real path.
-for c in $(allroots); do
-  git -c core.quotepath=false ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
-done | awk '{ s=$1; i=index($0," "); pth=substr($0,i+1); if (index(pth,"docs/pdf/")!=1) print s" "pth }' \
-  | sort -u > "$TMP/outside" || true
-: > "$TMP/pdfbytes"
-while read -r sha path; do
-  [ -n "$sha" ] || continue
-  git cat-file blob "$sha" > "$TMP/cls.pdf" 2>/dev/null || true
-  pdfinfo "$TMP/cls.pdf" >/dev/null 2>&1 && printf '%s\n' "$path" >> "$TMP/pdfbytes"
-done < "$TMP/outside" || true
-UNEXPECTED=$(printf '%s\n' "$UNEXPECTED"; cat "$TMP/pdfbytes")
-UNEXPECTED=$(printf '%s\n' "$UNEXPECTED" | sed '/^$/d' | sort -u)
+# Plus every blob the reader can open whose path is not under the published directory,
+# whatever it is called. The two halves used to disagree about the same object.
+OUTDOC=$(awk '{ i=index($0," "); p=substr($0,i+1); if (index(p,"docs/pdf/")!=1) print p }' "$TMP/alldocs" 2>/dev/null || true)
+UNEXPECTED=$(printf '%s\n%s\n' "$UNEXPECTED" "$OUTDOC" | sed '/^$/d' | sort -u)
+[ "${DOCS_UNCLASSIFIED:-0}" = "1" ] && warn "pdfinfo not installed; a document under another name was not looked for"
 if [ -z "$UNEXPECTED" ]; then
   pass "only docs/pdf/ ever held a PDF; $(blobsof '.pdf' | grep -c . || true) distinct PDF blobs in all"
 else
@@ -414,7 +412,7 @@ if [ -s "$TMP/fakepdf" ]; then
   sed 's/^/         /' "$TMP/fakepdf"
 else pass "every .pdf blob really is a PDF, so the readers below can decode all of them"
 fi
-PDFBLOBS=$(blobsof '.pdf')
+PDFBLOBS=$(cat "$TMP/alldocs" 2>/dev/null)
 NPDF=$(printf '%s' "$PDFBLOBS" | grep -c . || true)
 MET=""; TXT=""; : > "$TMP/unread"
 printf '%s\n' "$PDFBLOBS" | while read -r sha path; do
@@ -438,23 +436,26 @@ printf '%s\n' "$PDFBLOBS" | while read -r sha path; do
     if [ "$NP" -lt 1 ]; then
       printf '%s\n' "UNREADABLE $path: no page count could be read" >> "$TMP/unread"
     else
-      BADP=""; : > "$TMP/b.all"; PG=1
+      # NOT a character count. Three times that test was set just above the last plant -- any
+      # character, then any page, then two hundred characters -- and each time the next plant
+      # cleared it, because a scanned leaf bound into a typeset document carries a page number
+      # and a caption. It is wrong in the other direction too: a title page with a blank verso,
+      # which is ordinary typesetting, falls under any such threshold and would block a clean
+      # document. No count of characters separates a page of ink from a page of text. What the
+      # readers here cannot read is an IMAGE, so ask for the images instead. The three
+      # documents published here contain none, so this line is a statement about ink.
+      : > "$TMP/b.all"; PG=1
       while [ "$PG" -le "$NP" ]; do
         pdftotext -f "$PG" -l "$PG" "$TMP/b.pdf" "$TMP/b.txt" 2>/dev/null || true
-        : > "$TMP/b.txt.new"; mv "$TMP/b.txt" "$TMP/b.txt.new" 2>/dev/null || true
-        mv "$TMP/b.txt.new" "$TMP/b.txt" 2>/dev/null || true
-        # NOT "any character". A scanned page bound into a typeset document carries a typeset
-        # PAGE NUMBER, which is extractable, so asking for one character asked nothing: the
-        # commoner shape passed. The thinnest page of the three documents published here holds
-        # 1059 non-whitespace characters, so 200 separates a page of text from a page of ink.
-        if [ "$(tr -d '[:space:]' < "$TMP/b.txt" 2>/dev/null | wc -c | tr -d ' ')" -ge 200 ]; then
-          cat "$TMP/b.txt" >> "$TMP/b.all"
-        else
-          BADP="$BADP$PG "
-        fi
+        cat "$TMP/b.txt" >> "$TMP/b.all" 2>/dev/null || true
         PG=$((PG+1))
       done
-      [ -n "$BADP" ] && printf '%s\n' "UNREADABLE $path: page(s) $BADP yielded under 200 characters, so nothing here read them" >> "$TMP/unread"
+      if command -v pdfimages >/dev/null 2>&1; then
+        IMGP=$(pdfimages -list "$TMP/b.pdf" 2>/dev/null | tail -n +3 | awk '{print $1}' | sort -un | tr '\n' ' ')
+        [ -n "$IMGP" ] && printf '%s\n' "UNREADABLE $path: page(s) $IMGP carry an image, and nothing here reads what it shows" >> "$TMP/unread"
+      else
+        warn "pdfimages not installed; a page carried as an image would go unnoticed"
+      fi
       grep -iE "$SECRETS" "$TMP/b.all" | awk -v p="$path" '{print p": "$0}'
     fi
   fi
