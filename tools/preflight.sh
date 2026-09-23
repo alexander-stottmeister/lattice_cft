@@ -671,16 +671,26 @@ if command -v gh >/dev/null 2>&1; then
   RM1=$?
   gh api --paginate "repos/$SLUG/issues?state=all" --jq '.[] | "\(.title)\n\(.body // "")"' >> "$TMP/meta" 2>/dev/null
   RM2=$?
-  gh api --paginate "repos/$SLUG/releases" --jq '.[] | "\(.name // "")\n\(.body // "")"' >> "$TMP/meta" 2>/dev/null
+  gh api --paginate "repos/$SLUG/releases" --jq '.[] | "\(.name // "")\n\(.body // "")\n\((.assets // [])|map(.name)|join(" "))"' >> "$TMP/meta" 2>/dev/null
   RM3=$?
+  # Each of these is a separate endpoint and each is published exactly as an issue body is.
+  # An issue's own payload carries a comment COUNT, not the comment text, so the comments have
+  # to be asked for by themselves.
+  gh api --paginate "repos/$SLUG/issues/comments" --jq '.[].body // ""' >> "$TMP/meta" 2>/dev/null
+  RM4=$?
+  gh api --paginate "repos/$SLUG/pulls/comments" --jq '.[].body // ""' >> "$TMP/meta" 2>/dev/null
+  RM5=$?
+  gh api --paginate "repos/$SLUG/comments" --jq '.[].body // ""' >> "$TMP/meta" 2>/dev/null
+  RM6=$?
   set -e
-  if [ "$RM1" -ne 0 ] || [ "$RM2" -ne 0 ] || [ "$RM3" -ne 0 ]; then
-    warn "could not read the remote's description, issues or releases, so none were checked"
+  if [ "$RM1" -ne 0 ] || [ "$RM2" -ne 0 ] || [ "$RM3" -ne 0 ] \
+     || [ "$RM4" -ne 0 ] || [ "$RM5" -ne 0 ] || [ "$RM6" -ne 0 ]; then
+    warn "could not read all of the remote's own prose, so some of it went unchecked"
   elif grep -qiE "$SECRETS" "$TMP/meta"; then
     fail "the remote's own prose carries one of these"
     grep -inE "$SECRETS" "$TMP/meta" | sed 's/^/         /'
   else
-    pass "the remote's description, homepage, topics, issues and releases carry none of these"
+    pass "the remote's description, topics, issues, comments, releases and assets are clean"
   fi
   note "decide each of these deliberately; enabling Pages is itself the flip"
 else
