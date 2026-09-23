@@ -44,13 +44,29 @@ P_HOME='/Us''ers/[A-Za-z0-9._-]+'
 P_WS='/Doc''uments/Uni|Doc''uments/Uni/'
 SECRETS="$P_SESS|$P_MAIL|$P_INST|$P_HOME|$P_WS"
 
-# Every path ever written, one per line. `git rev-list --objects` prints "<sha> <path>" for
-# blobs and trees and a bare "<sha>" for commits, and A PATH MAY CONTAIN SPACES. Splitting on
-# whitespace with `awk '{print $2}'` truncates at the first space, which let this project's own
-# third-party PDF -- its name has spaces -- past steps 2 and 3 with a green line, and made the
-# pattern written for exactly that file dead code, since it contains spaces and the field never
-# did. Take everything after the sha, and drop the commit lines, which have no path.
-objpaths() { git rev-list --objects --all | sed -n 's/^[0-9a-f]\{40\} //p' | sort -u; }
+# Every path that has ever existed in any tree, one per line.
+#
+# TRAP, and it has bitten twice. `git rev-list --objects` looks like the right tool and is not.
+#   It names each unique BLOB once, under the first path it reaches, so a private path whose
+#   content is byte-identical to content at an allowed path is never printed at all: a copy of
+#   this project's third-party PDF at refs/ stayed invisible while the same bytes sat under
+#   docs/pdf/, and steps 2 and 3 both passed. The defect is the enumeration, not the parsing.
+#   It also prints the path unquoted after the sha, so a path containing a space was truncated
+#   by `awk '{print $2}'` and a path containing a newline split the record.
+# ls-tree per commit lists every path in every tree, and quotes a path with a newline rather
+# than splitting it, so both shapes survive as one line.
+# ls-tree quotes a path containing a newline -- "docs/notes\nOsborne-scan.pdf" -- which is
+# what keeps it on one line, but the surrounding quotes then defeat an anchored match: a
+# pattern ending in \.pdf$ does not fire, because the line ends in a quote. Strip them.
+objpaths() {
+  for c in $(git rev-list --all); do git ls-tree -r --name-only "$c"; done \
+    | sed 's/^"//; s/"$//' | sort -u
+}
+
+# The PDFs this repository publishes, from the index rather than a shell glob. A glob does not
+# descend, while step 2 accepts anything under the docs/pdf/ prefix, so a PDF one directory
+# deeper was counted by step 2 and never opened by step 5.
+pubpdfs() { git ls-files -- docs/pdf | grep -i '\.pdf$' || true; }
 
 echo "Pre-flight audit of $SLUG"
 echo "  clone: $CLONE"
@@ -85,7 +101,7 @@ echo "2. only the intended PDFs, in the history as well as the tree"
 # OTHERS, and the stronger form looks at every blob ever written, not just what is tracked.
 UNEXPECTED=$(objpaths | grep -i '\.pdf$' | grep -v '^docs/pdf/' || true)
 if [ -z "$UNEXPECTED" ]; then
-  pass "only docs/pdf/ ($(git ls-files 'docs/pdf/*.pdf' | wc -l | tr -d ' ') files) has ever held a PDF"
+  pass "only docs/pdf/ ($(pubpdfs | wc -l | tr -d ' ') files) has ever held a PDF"
 else
   fail "a PDF outside docs/pdf/ is in the history"; echo "$UNEXPECTED" | sed 's/^/         /'
 fi
@@ -122,10 +138,30 @@ echo "4. no session URL, address or local path, on any branch"
 #   equivalent search has always been case-insensitive, so the pair disagreed.
 #   Grepping the worktree reads ONE branch. Steps 2 and 3 read every ref, so a side branch
 #   could carry in content what those two would have caught in a name.
-HIT=$(git grep -l -i -E "$SECRETS" $(git rev-list --all) -- . 2>/dev/null | sort -u || true)
-if [ -z "$HIT" ]; then
+# Do not swallow the error. `2>/dev/null ... || true` turns a search that FAILED into an
+# empty result, and an empty result reads as a green line: the same fail-open shape as a
+# missing tool. git grep exits 0 when it matches, 1 when it does not, and above 1 on error.
+set +e
+git grep -l -i -E "$SECRETS" $(git rev-list --all) -- . > "$TMP/hits4" 2> "$TMP/err4"
+RC4=$?
+set -e
+HIT=$(sort -u "$TMP/hits4")
+if [ "$RC4" -gt 1 ]; then
+  fail "the content search itself failed, so step 4 proves nothing"
+  head -3 "$TMP/err4" | sed 's/^/         /'
+elif [ -z "$HIT" ]; then
   pass "clean across $(git ls-files | wc -l | tr -d ' ') tracked files and all $(git rev-list --all | wc -l | tr -d ' ') commits"
 else fail "a file on some branch carries one of these"; echo "$HIT" | sed 's/^/         /'; fi
+# An annotated tag is an object of its own: its tagger line and its message are pushed with
+# the ref and become public, and no step above reads either, because rev-list enumerates
+# commits and trees.
+TAGHIT=""
+for tg in $(git for-each-ref --format='%(refname)' refs/tags 2>/dev/null); do
+  git cat-file -p "$tg" 2>/dev/null | grep -qiE "$SECRETS" && TAGHIT="$TAGHIT$tg "
+done
+if [ -z "$TAGHIT" ]; then
+  pass "$(git for-each-ref refs/tags | wc -l | tr -d ' ') tags, none carrying one in its message or tagger"
+else fail "a tag carries one of these: $TAGHIT"; fi
 
 echo
 echo "5. binaries: metadata as well as page content"
@@ -133,11 +169,16 @@ echo "5. binaries: metadata as well as page content"
 # or a producer string in its metadata and its object streams, so a binary has to be read as
 # a binary and not through pdftotext alone. Both are checked below, and the SVGs separately:
 # a plotting library writes its own name, and sometimes a source path, into a comment.
-MET=$(for f in docs/pdf/*.pdf; do strings "$f" | grep -iE "$P_HOME|$P_WS|$P_MAIL" || true; done)
-if [ -z "$MET" ]; then pass "no local path or address in any PDF's readable metadata or streams"
+if ! command -v strings >/dev/null 2>&1; then
+  warn "strings not installed; no PDF's metadata or object streams were read at all"
+  MET=""
+else
+  MET=$(pubpdfs | while IFS= read -r f; do strings "$f" | grep -iE "$P_HOME|$P_WS|$P_MAIL" || true; done)
+fi
+if [ -z "$MET" ]; then pass "$(pubpdfs | wc -l | tr -d ' ') PDFs read; no local path or address in their readable metadata or streams"
 else fail "a PDF embeds a local path or address"; echo "$MET" | sed 's/^/         /'; fi
 if command -v pdftotext >/dev/null 2>&1; then
-  TXT=$(for f in docs/pdf/*.pdf; do pdftotext "$f" - 2>/dev/null | grep -iE "$P_HOME|$P_SESS" || true; done)
+  TXT=$(pubpdfs | while IFS= read -r f; do pdftotext "$f" - 2>/dev/null | grep -iE "$P_HOME|$P_SESS" || true; done)
   [ -z "$TXT" ] && pass "no such string in the rendered text either" || { fail "rendered PDF text carries one"; echo "$TXT" | sed 's/^/         /'; }
 else warn "pdftotext not installed; the rendered text of every PDF went unchecked"
 fi
