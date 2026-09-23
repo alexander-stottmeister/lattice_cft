@@ -78,6 +78,19 @@ echo "  clone: $CLONE"
 git clone --no-local --quiet "$REPO" "$CLONE"
 cd "$CLONE"
 
+# Which .pdf-named blobs really are PDFs. The exclusion in step 4 is by extension while the
+# readers in step 5 are not, so a gzip named .pdf was skipped by one and counted as read by
+# the other. Decide once, by the magic bytes, and let both steps use the answer.
+: > "$TMP/realpdf"; : > "$TMP/fakepdf"
+blobsof '.pdf' | while read -r sha path; do
+  [ -n "$sha" ] || continue
+  if [ "$(git cat-file blob "$sha" 2>/dev/null | head -c 5)" = "%PDF-" ]; then
+    printf '%s\n' "$sha" >> "$TMP/realpdf"
+  else
+    printf '%s %s\n' "$sha" "$path" >> "$TMP/fakepdf"
+  fi
+done || true
+
 echo
 echo "0. the committed auditor parses"
 # The script that RUNS is the working copy; the script that ships is the one in the clone, and
@@ -100,7 +113,31 @@ for f in $(git ls-files | grep -E '\.(sh|py|mjs|js)$'); do
   esac
 done
 if [ -n "$BADSYN" ]; then fail "a committed script does not parse: $BADSYN"
-else pass "$NSYN committed scripts parse"; fi
+else pass "$NSYN scripts parse at HEAD"; fi
+# HEAD is what ships, but every script blob in the history is published too, and the index
+# speaks for one branch at one moment -- the defect removed from step 5 and left here. Parse
+# them all. A broken blob that is not at HEAD is a historical artefact rather than a defect in
+# what ships, so it is named rather than blocking.
+: > "$TMP/oldsyn"
+for c in $(git rev-list --all); do
+  git ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
+done | grep -iE '\.(sh|py|mjs|js)"?$' | sort -u -k1,1 | while read -r sha path; do
+  [ -n "$sha" ] || continue
+  git cat-file blob "$sha" > "$TMP/blob.src" 2>/dev/null || continue
+  case "$path" in
+    *.sh)  sh -n "$TMP/blob.src" 2>/dev/null || printf '%s %s\n' "$sha" "$path" >> "$TMP/oldsyn" ;;
+    *.py)  python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$TMP/blob.src" 2>/dev/null || printf '%s %s\n' "$sha" "$path" >> "$TMP/oldsyn" ;;
+  esac
+done || true
+if [ -s "$TMP/oldsyn" ]; then
+  warn "$(grep -c . < "$TMP/oldsyn" || true) script blob(s) in the history do not parse"
+  while read -r sha path; do
+    printf '         %s %s  (in %s)\n' "$(printf '%s' "$sha" | cut -c1-7)" "$path" \
+      "$(git rev-list --all --objects | grep "^$sha" >/dev/null 2>&1 && git log --all --oneline --find-object="$sha" | head -1 | cut -d' ' -f1 || echo '?')"
+  done < "$TMP/oldsyn"
+  note "a broken intermediate version is published with the history; it is not what ships."
+else pass "every script blob in the history parses too"
+fi
 [ -n "$UNPARSED" ] && warn "node not installed; $(printf '%s' "$UNPARSED" | wc -w | tr -d ' ') JavaScript files went unparsed"
 note "sh -n and node --check are parsers: they do not resolve a name, so a call to a function"
 note "that no longer exists parses cleanly. Step 2 once shipped exactly that." 
@@ -217,7 +254,10 @@ for c in $(git rev-list --all); do
   git ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
 done | sort -u -k1,1 | while read -r sha path; do
   [ -n "$sha" ] || continue
-  case "$path" in *.pdf|*.pdf\") continue;; esac
+  # Skip only a blob that really is a PDF and so is read by step 5's own readers. Skipping by
+  # extension let a gzip named .pdf through both: past this test for its name, and counted by
+  # step 5 as read when neither reader could decode it.
+  grep -qx "$sha" "$TMP/realpdf" 2>/dev/null && continue
   N=$(git cat-file blob "$sha" 2>/dev/null | head -c 8000 | wc -c | tr -d ' ')
   Z=$(git cat-file blob "$sha" 2>/dev/null | head -c 8000 | LC_ALL=C tr -d '\000' | wc -c | tr -d ' ')
   [ "$N" != "$Z" ] && printf '%s\n' "$path"
@@ -227,6 +267,23 @@ if [ -s "$TMP/binblob" ]; then
   sort -u "$TMP/binblob" | sed 's/^/         /'
   note "read it, re-encode it as text, or excuse it deliberately."
 else pass "apart from the PDFs, every blob is text the searches above could read end to end"
+fi
+
+# A SYMLINK's content is its target, and git grep over a revision skips mode 120000, so a
+# link pointing at a private absolute path was read by nothing: only its own name reached
+# step 3. Read every link target ever committed.
+for c in $(git rev-list --all); do
+  git ls-tree -r "$c" | sed -n 's/^120000 blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
+done | sort -u -k1,1 > "$TMP/links" || true
+: > "$TMP/linkhits"
+while read -r sha path; do
+  [ -n "$sha" ] || continue
+  TGT=$(git cat-file blob "$sha" 2>/dev/null)
+  printf '%s' "$TGT" | grep -qiE "$SECRETS|$PRIVPATS" && printf '%s -> %s\n' "$path" "$TGT" >> "$TMP/linkhits"
+done < "$TMP/links" || true
+if [ -s "$TMP/linkhits" ]; then
+  fail "a symlink points somewhere private"; sort -u "$TMP/linkhits" | sed 's/^/         /'
+else pass "$(grep -c . < "$TMP/links" || true) symlinks ever committed, none pointing anywhere private"
 fi
 
 # An annotated tag is an object of its own: its tagger line and its message are pushed with
@@ -246,6 +303,11 @@ echo "5. binaries: metadata as well as page content"
 # or a producer string in its metadata and its object streams, so a binary has to be read as
 # a binary and not through pdftotext alone. Both are checked below, and the SVGs separately:
 # a plotting library writes its own name, and sometimes a source path, into a comment.
+if [ -s "$TMP/fakepdf" ]; then
+  fail "a file named .pdf is not a PDF, so neither reader below can decode it"
+  sed 's/^/         /' "$TMP/fakepdf"
+else pass "every .pdf blob really is a PDF, so the readers below can decode all of them"
+fi
 PDFBLOBS=$(blobsof '.pdf')
 NPDF=$(printf '%s' "$PDFBLOBS" | grep -c . || true)
 MET=""; TXT=""
@@ -289,6 +351,13 @@ echo
 echo "6. authorship"
 # --all, not the checked-out branch: steps 2 and 3 read every ref, and an address that
 # reaches the remote on a side branch is just as public.
+# A commit object carries four identity fields and only the two addresses were ever read.
+# An author NAME that is an address, and a committer NAME that is a home path, both travel in
+# a clone and are printed beside every commit, and passed under a line about the noreply
+# address. The tag check beside this one already reads a whole tag object, tagger included.
+NAMEHIT=$(git log --all --format='%an%n%cn' | sort -u | grep -iE "$SECRETS" || true)
+if [ -z "$NAMEHIT" ]; then pass "no author or committer NAME carries an address or a path"
+else fail "an author or committer name carries one of these"; printf '%s\n' "$NAMEHIT" | sed 's/^/         /'; fi
 IDS=$(git log --all --format='%ae %ce' | tr ' ' '\n' | sort -u)
 if [ "$(echo "$IDS" | grep -cv 'users\.noreply\.github\.com')" -eq 0 ]; then
   pass "every author and committer is the GitHub noreply address"
@@ -420,16 +489,32 @@ fi
 echo
 echo "8. the committed output regenerates from this clone"
 if [ "${1:-}" = "--build" ]; then
+  # TRAP: `git diff --quiet` cannot tell "regenerated identically" from "not regenerated at
+  # all". A generator given an early exit wrote nothing and the step still passed. So overwrite
+  # every generated file with a sentinel first: a generator that does not run leaves its
+  # sentinel behind and the diff fails. Silence is no longer a pass.
+  SENT=0
+  for g in "$CLONE"/docs/figures/*.svg "$CLONE"/docs/data/*.json "$CLONE"/docs/reference/*.html \
+           "$CLONE"/docs/reference/results.md "$CLONE"/docs/pdf/*.pdf; do
+    [ -f "$g" ] || continue
+    printf 'PREFLIGHT SENTINEL\n' > "$g"; SENT=$((SENT+1))
+  done
+  note "$SENT generated files overwritten with a sentinel before the rebuild"
+  # tools/build_pdfs.sh is what produces the three PDFs under docs/pdf/, with the fixed epoch
+  # that makes them reproducible. Step 8 used to compile into build/ and never run it, so the
+  # three files a reader actually downloads were the ones its byte-identity claim did not
+  # cover. The sentinel above is what exposed that.
   ( cd "$CLONE" && mkdir -p build
-    for f in free_fermion_cft_v5 free_fermion_cft_v4 critical-reread zini-wang-comparison; do
-      pdflatex -interaction=nonstopmode -output-directory=build "$f.tex" >/dev/null 2>&1
-      pdflatex -interaction=nonstopmode -output-directory=build "$f.tex" >/dev/null 2>&1
-    done
-    python3 sync_docs.py >/dev/null
-    python3 tools/make_data.py >/dev/null
-    python3 tools/make_figures.py >/dev/null
-    python3 tools/build_reference.py >/dev/null ) || { fail "the rebuild itself failed"; }
-  if git -C "$CLONE" diff --quiet; then pass "every generated file is byte-identical after a rebuild"
+    sh tools/build_pdfs.sh
+    pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v4.tex >/dev/null 2>&1
+    pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v4.tex >/dev/null 2>&1
+    python3 sync_docs.py
+    python3 tools/make_data.py
+    python3 tools/make_figures.py
+    python3 tools/build_reference.py ) > "$TMP/buildlog" 2>&1 || { fail "the rebuild itself failed"; sed 's/^/         /' "$TMP/buildlog" | tail -5; }
+  LEFT=$(grep -rl '^PREFLIGHT SENTINEL$' "$CLONE"/docs 2>/dev/null | wc -l | tr -d ' ')
+  [ "$LEFT" = "0" ] || { fail "$LEFT generated file(s) were never rewritten by the rebuild"; grep -rl '^PREFLIGHT SENTINEL$' "$CLONE"/docs | sed "s|$CLONE/|         |"; }
+  if git -C "$CLONE" diff --quiet; then pass "all $SENT generated files were rewritten and are byte-identical"
   else fail "a committed file does not regenerate"; git -C "$CLONE" diff --stat | sed 's/^/         /'; fi
   if command -v node >/dev/null 2>&1; then
     node "$CLONE/tools/check_js.mjs" >/dev/null 2>&1 && pass "browser kernels agree with the Python" || fail "browser kernels disagree with the Python"
