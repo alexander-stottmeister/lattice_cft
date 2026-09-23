@@ -693,7 +693,12 @@ if command -v gh >/dev/null 2>&1; then
   elif [ -z "$ONLYT" ]; then pass "the remote has no tag this clone lacks"
   else fail "the remote carries a tag this audit never saw"; printf '%s\n' "$ONLYT" | sed 's/^/         /'; fi
 
-  for sha in 69c2afa a66065d 8b4a370; do
+  # Two rewrites have happened here. The first three hashes are the commits the 2026-09-22
+  # rewrite superseded; the last three are from the 2026-09-23 rewrite that made the
+  # co-authorship trailers uniform -- its root, its tip, and the commit before the tip.
+  # Each remote was deleted and re-created rather than force-pushed, so none of these
+  # should be served. A force-push would leave every one of them reachable by hash.
+  for sha in 69c2afa a66065d 8b4a370 d80917f ae61239 b297d7b; do
     OUT=$(gh api "repos/$SLUG/commits/$sha" --jq '.sha' 2>&1 || true)
     if printf '%s' "$OUT" | grep -qE '^[0-9a-f]{40}$'; then fail "$sha is still served by the remote"
     else pass "$sha is not served"; fi
