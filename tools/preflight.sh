@@ -84,15 +84,26 @@ echo "0. the committed auditor parses"
 # they are not the same file. An unterminated string was once committed and pushed while the
 # working copy ran fine, so a green audit said nothing about what a reader would get. Parse the
 # committed copy of every shell and python tool before trusting anything below.
-BADSYN=""
-for f in $(git ls-files -- 'tools/*.sh' 'tools/*.py' '*.sh'); do
+# EVERY committed script, wherever it sits. A pathspec of tools/ plus the root once selected
+# 8 of the 34, leaving the generator at the root, the numerics and the site's own JavaScript
+# unparsed while the line claimed all of them.
+BADSYN=""; NSYN=0; UNPARSED=""
+for f in $(git ls-files | grep -E '\.(sh|py|mjs|js)$'); do
   case "$f" in
-    *.sh) sh -n "$f" 2>/dev/null || BADSYN="$BADSYN$f " ;;
-    *.py) python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$f" 2>/dev/null || BADSYN="$BADSYN$f " ;;
+    *.sh)  NSYN=$((NSYN+1)); sh -n "$f" 2>/dev/null || BADSYN="$BADSYN$f " ;;
+    *.py)  NSYN=$((NSYN+1)); python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$f" 2>/dev/null || BADSYN="$BADSYN$f " ;;
+    *.mjs|*.js)
+      if command -v node >/dev/null 2>&1; then
+        NSYN=$((NSYN+1)); node --check "$f" 2>/dev/null || BADSYN="$BADSYN$f "
+      else UNPARSED="$UNPARSED$f "
+      fi ;;
   esac
 done
-if [ -z "$BADSYN" ]; then pass "every committed shell and python tool parses"
-else fail "a committed tool does not parse: $BADSYN"; fi
+if [ -n "$BADSYN" ]; then fail "a committed script does not parse: $BADSYN"
+else pass "$NSYN committed scripts parse"; fi
+[ -n "$UNPARSED" ] && warn "node not installed; $(printf '%s' "$UNPARSED" | wc -w | tr -d ' ') JavaScript files went unparsed"
+note "sh -n and node --check are parsers: they do not resolve a name, so a call to a function"
+note "that no longer exists parses cleanly. Step 2 once shipped exactly that." 
 
 echo
 echo "1. paths that were committed and later removed"
@@ -122,7 +133,7 @@ echo "2. only the intended PDFs, in the history as well as the tree"
 # OTHERS, and the stronger form looks at every blob ever written, not just what is tracked.
 UNEXPECTED=$(objpaths | grep -i '\.pdf$' | grep -v '^docs/pdf/' || true)
 if [ -z "$UNEXPECTED" ]; then
-  pass "only docs/pdf/ ($(pubpdfs | wc -l | tr -d ' ') files) has ever held a PDF"
+  pass "only docs/pdf/ ever held a PDF; $(blobsof '.pdf' | grep -c . || true) distinct PDF blobs in all"
 else
   fail "a PDF outside docs/pdf/ is in the history"; echo "$UNEXPECTED" | sed 's/^/         /'
 fi
@@ -196,22 +207,26 @@ if [ "$RC4" -gt 1 ]; then
 elif [ -z "$HIT" ]; then
   pass "clean across $(git ls-files | wc -l | tr -d ' ') tracked files and all $(git rev-list --all | wc -l | tr -d ' ') commits"
 else fail "a file on some branch carries one of these"; echo "$HIT" | sed 's/^/         /'; fi
-# A UTF-16 blob reads as ordinary text after checkout but carries its characters with an
-# interleaved zero byte, so an ASCII pattern never matches it. Rather than guess at encodings,
-# name any such blob so a person reads it: this repository has none.
-U16=""
+# The search above reads bytes as text, so it is blind to any blob holding a NUL. A byte-order
+# mark was the first attempt at naming those and was the wrong predicate: UTF-16 without a BOM
+# is invisible to it, UTF-32BE evades it even with one, and a gzip, a zip or a PNG text chunk
+# were never in scope at all. Review planted all three carrying a real address and they passed.
+# Use git's own rule, a NUL byte in the first 8000, and name every such blob except the PDFs,
+# which step 5 opens with readers of their own.
 for c in $(git rev-list --all); do
   git ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
 done | sort -u -k1,1 | while read -r sha path; do
   [ -n "$sha" ] || continue
-  B=$(git cat-file blob "$sha" 2>/dev/null | head -c 2 | od -An -tx1 | tr -d ' \n')
-  [ "$B" = "fffe" ] || [ "$B" = "feff" ] && printf '%s\n' "$path"
-done > "$TMP/u16" || true
-if [ -s "$TMP/u16" ]; then
-  fail "a UTF-16 blob is in the history; the search above cannot see inside it, so it"
-  note "proves nothing about this file. Read it, re-encode it, or excuse it deliberately."
-  sort -u "$TMP/u16" | sed 's/^/         /'
-else pass "no UTF-16 blob, so the searches above could see every byte"
+  case "$path" in *.pdf|*.pdf\") continue;; esac
+  N=$(git cat-file blob "$sha" 2>/dev/null | head -c 8000 | wc -c | tr -d ' ')
+  Z=$(git cat-file blob "$sha" 2>/dev/null | head -c 8000 | LC_ALL=C tr -d '\000' | wc -c | tr -d ' ')
+  [ "$N" != "$Z" ] && printf '%s\n' "$path"
+done > "$TMP/binblob" || true
+if [ -s "$TMP/binblob" ]; then
+  fail "a blob the content search cannot read is in the history, so step 4 says nothing of it"
+  sort -u "$TMP/binblob" | sed 's/^/         /'
+  note "read it, re-encode it as text, or excuse it deliberately."
+else pass "apart from the PDFs, every blob is text the searches above could read end to end"
 fi
 
 # An annotated tag is an object of its own: its tagger line and its message are pushed with
@@ -307,9 +322,21 @@ for c in $(git rev-list --all); do
 done
 if [ -z "$MSGHIT" ]; then
   pass "no address or local path in any commit message body ($MSGSKIP read and excused below)"
-  for c in $MSG_VOCAB; do git log -1 --format='         excused: %h %s' "$c" 2>/dev/null; done
-  note "each was read: it quotes the patterns it added, which is vocabulary and not a leak."
-  note "Rewording needs history rewritten and the remote re-created; that is a decision."
+  # A listed sha will not survive the history rewrite this node's trailer notice contemplates.
+  # Without this guard git log exits 128 on a missing object and set -e kills the run inside
+  # step 6, after a green line and before any verdict is printed.
+  for c in $MSG_VOCAB; do
+    if git cat-file -e "${c}^{commit}" 2>/dev/null; then
+      git log -1 --format='         excused: %h %s' "$c"
+    else
+      warn "excused commit $c is not in this history; the list is stale after a rewrite"
+    fi
+  done
+  note "both were read. 6d0161a quotes bare domains and a path fragment, with no local part"
+  note "and no user name: vocabulary. 4d7ca11 names an EXAMPLE branch that is a syntactically"
+  note "complete address; it is fabricated and is not the author's, so publishing it is a"
+  note "knowing decision rather than a leak. Rewording either needs history rewritten and the"
+  note "remote re-created."
 else
   fail "a commit message carries one of these"
   for c in $MSGHIT; do
@@ -347,8 +374,15 @@ if command -v gh >/dev/null 2>&1; then
     pass "positive control: the API serves its own tip, so a negative answer below means something"
     if [ "$TIP" != "$(git rev-parse HEAD)" ]; then
       warn "the remote tip is $(printf '%s' "$TIP" | cut -c1-7), not this clone's HEAD"
-      note "steps 7 and 9 describe the remote; every other step describes this unpushed"
-      note "working copy. Push, then re-run, before treating this as a go-ahead."
+      # Two situations give the same mismatch and they are not equally serious. The clone
+      # already holds the remote's tip when this copy is merely ahead; it does not when the
+      # remote carries commits nobody here has read.
+      if git cat-file -e "$TIP" 2>/dev/null; then
+        note "this copy is ahead of the remote. Push, then re-run before treating this as a"
+        note "go-ahead: steps 7 and 9 describe the remote, every other step describes here."
+      else
+        fail "the remote carries commits this clone does not have, so they were never audited"
+      fi
     fi
   else
     fail "positive control failed: the API did not serve its own tip, so step 7 is inconclusive"
@@ -356,7 +390,9 @@ if command -v gh >/dev/null 2>&1; then
   fi
   # Everything above audits THIS clone. What becomes public is the remote, so a branch that
   # exists only there is outside the whole audit. Compare the two sets of names.
-  RREFS=$(gh api "repos/$SLUG/branches" --jq '.[].name' 2>/dev/null | sort -u || true)
+  # --paginate: without it the API returns one page, so only the first 30 branches were ever
+  # compared and a 31st gave a clean line.
+  RREFS=$(gh api --paginate "repos/$SLUG/branches" --jq '.[].name' 2>/dev/null | sort -u || true)
   LREFS=$(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes 2>/dev/null \
           | sed 's|^origin/||' | sort -u)
   printf '%s\n' "$RREFS" | sed '/^$/d' > "$TMP/rrefs"
@@ -365,6 +401,13 @@ if command -v gh >/dev/null 2>&1; then
   if [ -z "$RREFS" ]; then warn "could not list the remote's branches; only this clone was audited"
   elif [ -z "$ONLY" ]; then pass "the remote has no branch this clone lacks"
   else fail "the remote carries a branch this audit never saw"; printf '%s\n' "$ONLY" | sed 's/^/         /'; fi
+  # Tags too: this script already treats a local annotated tag as a publication surface.
+  RTAGS=$(gh api --paginate "repos/$SLUG/tags" --jq '.[].name' 2>/dev/null | sort -u || true)
+  git for-each-ref --format='%(refname:short)' refs/tags | sort -u > "$TMP/ltags"
+  printf '%s\n' "$RTAGS" | sed '/^$/d' > "$TMP/rtags"
+  ONLYT=$(comm -23 "$TMP/rtags" "$TMP/ltags")
+  if [ -z "$ONLYT" ]; then pass "the remote has no tag this clone lacks"
+  else fail "the remote carries a tag this audit never saw"; printf '%s\n' "$ONLYT" | sed 's/^/         /'; fi
 
   for sha in 69c2afa a66065d 8b4a370; do
     OUT=$(gh api "repos/$SLUG/commits/$sha" --jq '.sha' 2>&1 || true)
