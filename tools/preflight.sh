@@ -100,8 +100,15 @@ echo "0. the committed auditor parses"
 # EVERY committed script, wherever it sits. A pathspec of tools/ plus the root once selected
 # 8 of the 34, leaving the generator at the root, the numerics and the site's own JavaScript
 # unparsed while the line claimed all of them.
+# -c core.quotepath=false and a read loop, not `for f in $(...)`. Word splitting turned a
+# valid "my tool.sh" into a failure on a path that does not exist, while never parsing the
+# real file; and git quotes a non-ASCII path by default, so the anchored pattern skipped it
+# and a BROKEN script at HEAD was reported as parsing. That is the defect this step exists to
+# name, in this step.
 BADSYN=""; NSYN=0; UNPARSED=""
-for f in $(git ls-files | grep -E '\.(sh|py|mjs|js)$'); do
+git -c core.quotepath=false ls-files | grep -E '\.(sh|py|mjs|js)$' > "$TMP/headscripts" || true
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
   case "$f" in
     *.sh)  NSYN=$((NSYN+1)); sh -n "$f" 2>/dev/null || BADSYN="$BADSYN$f " ;;
     *.py)  NSYN=$((NSYN+1)); python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$f" 2>/dev/null || BADSYN="$BADSYN$f " ;;
@@ -111,7 +118,7 @@ for f in $(git ls-files | grep -E '\.(sh|py|mjs|js)$'); do
       else UNPARSED="$UNPARSED$f "
       fi ;;
   esac
-done
+done < "$TMP/headscripts"
 if [ -n "$BADSYN" ]; then fail "a committed script does not parse: $BADSYN"
 else pass "$NSYN scripts parse at HEAD"; fi
 # HEAD is what ships, but every script blob in the history is published too, and the index
@@ -182,9 +189,14 @@ echo "2. only the intended PDFs, in the history as well as the tree"
 # suffix drew a clean line here while step 4 blocked it on an unrelated ground, two checks
 # disagreeing about one object.
 UNEXPECTED=$(objpaths | grep -i '\.pdf$' | grep -v '^docs/pdf/' || true)
+# Drop the allowed directory BEFORE deduplicating, not after. `sort -u -k1,1` keeps one line
+# per blob, so a real document at a private path that is byte-identical to an allowed one
+# survived only under the allowed path and the filter then removed it entirely: the same
+# enumeration defect this script has now fixed twice, back inside the check written to close
+# it. Quoting is off, so the filter sees the real path.
 for c in $(git rev-list --all); do
-  git ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
-done | sort -u -k1,1 | grep -v ' docs/pdf/' > "$TMP/outside" || true
+  git -c core.quotepath=false ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
+done | grep -v ' docs/pdf/' | sort -u > "$TMP/outside" || true
 : > "$TMP/pdfbytes"
 while read -r sha path; do
   [ -n "$sha" ] || continue
@@ -343,13 +355,13 @@ MET=""; TXT=""; : > "$TMP/unread"
 printf '%s\n' "$PDFBLOBS" | while read -r sha path; do
   [ -n "$sha" ] || continue
   git cat-file blob "$sha" > "$TMP/b.pdf" 2>/dev/null || continue
-  command -v strings >/dev/null 2>&1 && strings "$TMP/b.pdf" | grep -iE "$P_HOME|$P_WS|$P_MAIL" | sed "s|^|$path: |"
+  command -v strings >/dev/null 2>&1 && strings "$TMP/b.pdf" | grep -iE "$SECRETS" | awk -v p="$path" '{print p": "$0}'
   # Require the reader to have SUCCEEDED. Five magic bytes followed by anything, or a document
   # truncated past its trailer, were counted among the files "read" while neither reader could
   # decode a word of them. A file nobody could read is not a clean file.
   if command -v pdftotext >/dev/null 2>&1; then
     if pdftotext "$TMP/b.pdf" "$TMP/b.txt" 2>/dev/null && [ -s "$TMP/b.txt" ]; then
-      grep -iE "$P_HOME|$P_SESS" "$TMP/b.txt" | sed "s|^|$path: |"
+      grep -iE "$SECRETS" "$TMP/b.txt" | awk -v p="$path" '{print p": "$0}'
     else
       printf '%s\n' "UNREADABLE $path: pdftotext produced no text" >> "$TMP/unread"
     fi
@@ -366,6 +378,8 @@ if [ -s "$TMP/unread" ]; then
 fi
 if [ -s "$TMP/pdfhits" ]; then
   fail "a PDF embeds a local path or address"; sed 's/^/         /' "$TMP/pdfhits" | sort -u
+elif [ -s "$TMP/unread" ]; then
+  : # already reported above; do not follow a failure with a line calling the same files clean
 elif [ -z "$HAVE" ]; then
   warn "no PDF was read at all, so nothing here is evidence"
 else
@@ -375,6 +389,9 @@ note "limit: strings cannot read a compressed object stream, so metadata inside 
 note "seen here. pdfTeX leaves the Info dict uncompressed, so it is visible today."
 # The SVGs, over every ref rather than a worktree glob, and counted: the glob did not descend,
 # matched nothing at all if the figures ever moved, and its error was swallowed into a pass.
+# Both searches above now use the whole pattern set. They used two different subsets, with the
+# institutional address in neither, so a page whose text carried one inside a compressed stream
+# -- invisible to the byte search and to step 4 -- was reported clean.
 SVGBLOBS=$(blobsof '.svg')
 NSVG=$(printf '%s' "$SVGBLOBS" | grep -c . || true)
 printf '%s\n' "$SVGBLOBS" | while read -r sha path; do
@@ -513,11 +530,14 @@ if command -v gh >/dev/null 2>&1; then
   elif [ -z "$ONLY" ]; then pass "the remote has no branch this clone lacks"
   else fail "the remote carries a branch this audit never saw"; printf '%s\n' "$ONLY" | sed 's/^/         /'; fi
   # Tags too: this script already treats a local annotated tag as a publication surface.
-  RTAGS=$(gh api --paginate "repos/$SLUG/tags" --jq '.[].name' 2>/dev/null | sort -u || true)
+  # Fail closed, as the branch comparison beside it does. With only this call failing the step
+  # printed a clean line over an answer it never received.
+  set +e; RTAGS=$(gh api --paginate "repos/$SLUG/tags" --jq '.[].name' 2>/dev/null | sort -u); RCT=$?; set -e
   git for-each-ref --format='%(refname:short)' refs/tags | sort -u > "$TMP/ltags"
   printf '%s\n' "$RTAGS" | sed '/^$/d' > "$TMP/rtags"
   ONLYT=$(comm -23 "$TMP/rtags" "$TMP/ltags")
-  if [ -z "$ONLYT" ]; then pass "the remote has no tag this clone lacks"
+  if [ "$RCT" -ne 0 ]; then warn "could not list the remote's tags, so none were compared"
+  elif [ -z "$ONLYT" ]; then pass "the remote has no tag this clone lacks"
   else fail "the remote carries a tag this audit never saw"; printf '%s\n' "$ONLYT" | sed 's/^/         /'; fi
 
   for sha in 69c2afa a66065d 8b4a370; do
@@ -557,17 +577,27 @@ if [ "${1:-}" = "--build" ]; then
   # sync_docs.py generates from the paper's compiled aux, so the paper must be compiled first,
   # then sync_docs.py run, and only then the three documents built. Building them first left
   # the notes compiling against a sentinel and one PDF never written at all.
-  ( cd "$CLONE" && mkdir -p build
-    pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v5.tex >/dev/null 2>&1
-    pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v5.tex >/dev/null 2>&1
-    python3 sync_docs.py
-    sh tools/build_pdfs.sh
-    pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v4.tex >/dev/null 2>&1
-    pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v4.tex >/dev/null 2>&1
-    python3 sync_docs.py
-    python3 tools/make_data.py
-    python3 tools/make_figures.py
-    python3 tools/build_reference.py ) > "$TMP/buildlog" 2>&1 || { fail "the rebuild itself failed"; sed 's/^/         /' "$TMP/buildlog" | tail -5; }
+  # Chain with && rather than relying on errexit. The subshell is the condition of an `if`,
+  # and a shell suppresses errexit for a condition -- including inside a subshell there -- so
+  # `set -e` in it is ignored and only the LAST generator's status survived. A generator made
+  # to write everything and then exit 1 left the step fully green. With &&, the chain stops at
+  # the first failure and that failure is the subshell's status.
+  # The two bare compiles are for the cross-reference data only and are allowed to fail: the
+  # three published documents are built by tools/build_pdfs.sh, which runs under its own
+  # errexit, and the reference generator says so when the comparison data is absent.
+  if ( cd "$CLONE" && mkdir -p build \
+       && { pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v5.tex >/dev/null 2>&1 || true; } \
+       && { pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v5.tex >/dev/null 2>&1 || true; } \
+       && python3 sync_docs.py \
+       && sh tools/build_pdfs.sh \
+       && { pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v4.tex >/dev/null 2>&1 || true; } \
+       && { pdflatex -interaction=nonstopmode -output-directory=build free_fermion_cft_v4.tex >/dev/null 2>&1 || true; } \
+       && python3 sync_docs.py \
+       && python3 tools/make_data.py \
+       && python3 tools/make_figures.py \
+       && python3 tools/build_reference.py ) > "$TMP/buildlog" 2>&1; then :
+  else fail "the rebuild itself failed"; tail -8 "$TMP/buildlog" | sed 's/^/         /'
+  fi
   STALE=""
   for s in $SPLICED; do
     [ -f "$CLONE/$s" ] || continue
