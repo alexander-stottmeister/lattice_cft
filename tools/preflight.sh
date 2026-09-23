@@ -113,9 +113,13 @@ if ! command -v pdfinfo >/dev/null 2>&1; then
   DOCS_UNCLASSIFIED=1
 else
   DOCS_UNCLASSIFIED=0
+  # sort -u on the WHOLE line, not -k1,1. Deduplicating by blob before the path filter is the
+  # enumeration defect this script has now had five times: the same document at an allowed and
+  # at a private path survived only under the allowed one, and the filter then dropped it.
+  # Quoting off, so the filter below compares the real path and not git's rendering of it.
   for c in $(allroots); do
-    git ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
-  done | sort -u -k1,1 | while read -r sha path; do
+    git -c core.quotepath=false ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
+  done | sort -u | while read -r sha path; do
     [ -n "$sha" ] || continue
     git cat-file blob "$sha" > "$TMP/cls.pdf" 2>/dev/null || true
     if pdfinfo "$TMP/cls.pdf" >/dev/null 2>&1; then
@@ -427,9 +431,9 @@ if [ -s "$TMP/fakepdf" ]; then
   sed 's/^/         /' "$TMP/fakepdf"
 else pass "every .pdf blob really is a PDF, so the readers below can decode all of them"
 fi
-PDFBLOBS=$(cat "$TMP/alldocs" 2>/dev/null)
+PDFBLOBS=$(sort -u -k1,1 "$TMP/alldocs" 2>/dev/null)
 NPDF=$(printf '%s' "$PDFBLOBS" | grep -c . || true)
-MET=""; TXT=""; : > "$TMP/unread"
+MET=""; TXT=""; : > "$TMP/unread"; : > "$TMP/imgnote"
 printf '%s\n' "$PDFBLOBS" | while read -r sha path; do
   [ -n "$sha" ] || continue
   git cat-file blob "$sha" > "$TMP/b.pdf" 2>/dev/null || continue
@@ -451,25 +455,40 @@ printf '%s\n' "$PDFBLOBS" | while read -r sha path; do
     if [ "$NP" -lt 1 ]; then
       printf '%s\n' "UNREADABLE $path: no page count could be read" >> "$TMP/unread"
     else
-      # NOT a character count. Three times that test was set just above the last plant -- any
-      # character, then any page, then two hundred characters -- and each time the next plant
-      # cleared it, because a scanned leaf bound into a typeset document carries a page number
-      # and a caption. It is wrong in the other direction too: a title page with a blank verso,
-      # which is ordinary typesetting, falls under any such threshold and would block a clean
-      # document. No count of characters separates a page of ink from a page of text. What the
-      # readers here cannot read is an IMAGE, so ask for the images instead. The three
-      # documents published here contain none, so this line is a statement about ink.
-      : > "$TMP/b.all"; PG=1
+      # What the searches cannot read is INK they did not turn into text. Three predicates
+      # have been aimed at the last plant here and each was cleared by the next: any
+      # character, then any page, then two hundred characters, then a raster. Counting
+      # characters cannot separate ink from text, and naming every raster condemns an
+      # ordinary figure. So ask the page itself.
+      #   A page that yielded text has been read, whatever else is on it.
+      #   A page that yielded none is rendered: if it comes back blank it is a blank page,
+      #   which is ordinary typesetting; if something is on it -- a scan, or glyphs turned
+      #   into outlines, which is what flattening for print produces -- then it carries ink
+      #   nothing here read, and that blocks.
+      # A raster on a page that DID yield text is reported separately and does not block:
+      # its content was not read either, but a figure in a paper is not a finding.
+      : > "$TMP/b.all"; PG=1; INKP=""
       while [ "$PG" -le "$NP" ]; do
         pdftotext -f "$PG" -l "$PG" "$TMP/b.pdf" "$TMP/b.txt" 2>/dev/null || true
-        cat "$TMP/b.txt" >> "$TMP/b.all" 2>/dev/null || true
+        if [ -n "$(tr -d '[:space:]' < "$TMP/b.txt" 2>/dev/null | head -c 1)" ]; then
+          cat "$TMP/b.txt" >> "$TMP/b.all" 2>/dev/null || true
+        elif command -v pdftoppm >/dev/null 2>&1; then
+          rm -f "$TMP/pg"*.pgm 2>/dev/null || true
+          pdftoppm -gray -r 18 -f "$PG" -l "$PG" "$TMP/b.pdf" "$TMP/pg" 2>/dev/null || true
+          # A blank page renders as nothing but the maximum grey value; any other byte is ink.
+          for g in "$TMP/pg"*.pgm; do
+            [ -f "$g" ] || continue
+            LC_ALL=C tr -d '\377' < "$g" | tail -c +16 | LC_ALL=C tr -d '[:space:]' | head -c 1 | grep -q . && INKP="$INKP$PG "
+          done
+        else
+          INKP="$INKP$PG "
+        fi
         PG=$((PG+1))
       done
+      [ -n "$INKP" ] && printf '%s\n' "UNREADABLE $path: page(s) $INKP carry ink that yielded no text, so nothing here read them" >> "$TMP/unread"
       if command -v pdfimages >/dev/null 2>&1; then
         IMGP=$(pdfimages -list "$TMP/b.pdf" 2>/dev/null | tail -n +3 | awk '{print $1}' | sort -un | tr '\n' ' ')
-        [ -n "$IMGP" ] && printf '%s\n' "UNREADABLE $path: page(s) $IMGP carry an image, and nothing here reads what it shows" >> "$TMP/unread"
-      else
-        warn "pdfimages not installed; a page carried as an image would go unnoticed"
+        [ -n "$IMGP" ] && printf '%s\n' "$path: page(s) $IMGP embed an image, whose content nothing here reads" >> "$TMP/imgnote"
       fi
       grep -iE "$SECRETS" "$TMP/b.all" | awk -v p="$path" '{print p": "$0}'
     fi
@@ -492,6 +511,14 @@ elif [ -z "$HAVE" ]; then
   warn "no PDF was read at all, so nothing here is evidence"
 else
   pass "$NPDF distinct PDF blobs ever committed, read for $HAVE; clean"
+fi
+# Outside the branches above, so it is reported whether the step passed or failed: a run
+# already red for another reason used to drop this entirely. A raster is content nothing here
+# reads, and a figure in a paper is not a finding, so it warns rather than blocks -- but it
+# reaches the closing verdict, and the three documents published here embed none.
+if [ -s "$TMP/imgnote" ]; then
+  warn "an embedded image carries content nothing here reads; look at each before flipping"
+  sort -u "$TMP/imgnote" | sed 's/^/         /'
 fi
 note "limit: strings cannot read a compressed object stream, so metadata inside one is not"
 note "seen here. pdfTeX leaves the Info dict uncompressed, so it is visible today."
