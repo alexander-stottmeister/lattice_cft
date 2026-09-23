@@ -319,8 +319,13 @@ done | sort -u -k1,1 | while read -r sha path; do
   # extension let a gzip named .pdf through both: past this test for its name, and counted by
   # step 5 as read when neither reader could decode it.
   grep -qx "$sha" "$TMP/realpdf" 2>/dev/null && continue
-  N=$(git cat-file blob "$sha" 2>/dev/null | head -c 8000 | wc -c | tr -d ' ')
-  Z=$(git cat-file blob "$sha" 2>/dev/null | head -c 8000 | LC_ALL=C tr -d '\000' | wc -c | tr -d ' ')
+  # The WHOLE blob, not git's first-8000-bytes heuristic. That bound is right for deciding how
+  # to diff a file and wrong for a claim about what the searches could read: nine thousand
+  # bytes of ordinary prose followed by an address in a wide encoding, or a compressed member
+  # in the same position, passed both this rule and the pattern search, and the line said
+  # every blob was readable end to end. If the claim is end to end, the test has to be too.
+  N=$(git cat-file blob "$sha" 2>/dev/null | wc -c | tr -d ' ')
+  Z=$(git cat-file blob "$sha" 2>/dev/null | LC_ALL=C tr -d '\000' | wc -c | tr -d ' ')
   [ "$N" != "$Z" ] && printf '%s\n' "$path"
 done > "$TMP/binblob" || true
 if [ -s "$TMP/binblob" ]; then
