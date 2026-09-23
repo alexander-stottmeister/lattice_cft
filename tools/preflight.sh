@@ -391,7 +391,12 @@ printf '%s\n' "$PDFBLOBS" | while read -r sha path; do
   # truncated past its trailer, were counted among the files "read" while neither reader could
   # decode a word of them. A file nobody could read is not a clean file.
   if command -v pdftotext >/dev/null 2>&1; then
-    if pdftotext "$TMP/b.pdf" "$TMP/b.txt" 2>/dev/null && [ -s "$TMP/b.txt" ]; then
+    # Not just non-empty: pdftotext exits 0 and writes a single form feed for a page with no
+    # extractable text, so an image-only page -- which is exactly the shape of a scanned page
+    # image -- satisfied a size test while nothing had been read from it. Require a character
+    # that is not whitespace.
+    if pdftotext "$TMP/b.pdf" "$TMP/b.txt" 2>/dev/null \
+       && [ -n "$(tr -d '[:space:]' < "$TMP/b.txt" | head -c 1)" ]; then
       grep -iE "$SECRETS" "$TMP/b.txt" | awk -v p="$path" '{print p": "$0}'
     else
       printf '%s\n' "UNREADABLE $path: pdftotext produced no text" >> "$TMP/unread"
@@ -678,6 +683,8 @@ if command -v gh >/dev/null 2>&1; then
     pass "the remote's description, homepage, topics, issues and releases carry none of these"
   fi
   note "decide each of these deliberately; enabling Pages is itself the flip"
+else
+  warn "gh not installed; the remote's settings and its own prose went unchecked"
 fi
 
 echo
