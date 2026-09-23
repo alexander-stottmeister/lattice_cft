@@ -107,7 +107,10 @@ cd "$CLONE"
 : > "$TMP/realpdf"; : > "$TMP/fakepdf"
 blobsof '.pdf' | while read -r sha path; do
   [ -n "$sha" ] || continue
-  if [ "$(git cat-file blob "$sha" 2>/dev/null | head -c 5)" = "%PDF-" ]; then
+  # Within the first kilobyte, not at byte zero: a reader accepts a header that is preceded
+  # by other bytes, so a five-byte test at offset zero decided a genuine document was not one
+  # and no reader ever opened it.
+  if git cat-file blob "$sha" 2>/dev/null | head -c 1024 | LC_ALL=C grep -q '%PDF-'; then
     printf '%s\n' "$sha" >> "$TMP/realpdf"
   else
     printf '%s %s\n' "$sha" "$path" >> "$TMP/fakepdf"
@@ -128,23 +131,37 @@ echo "0. the committed auditor parses"
 # real file; and git quotes a non-ASCII path by default, so the anchored pattern skipped it
 # and a BROKEN script at HEAD was reported as parsing. That is the defect this step exists to
 # name, in this step.
-BADSYN=""; NSYN=0; UNPARSED=""
-# -z, then NUL to newline: git quotes a path holding a quote, a backslash or a control
-# character whatever core.quotepath says, and the anchored pattern then skipped it.
-git ls-files -z | tr '\0' '\n' | grep -E '\.(sh|py|mjs|js)$' > "$TMP/headscripts" || true
-while IFS= read -r f; do
-  [ -n "$f" ] || continue
-  case "$f" in
-    *.sh)  NSYN=$((NSYN+1)); sh -n "$f" 2>/dev/null || BADSYN="$BADSYN$f " ;;
-    *.py)  NSYN=$((NSYN+1)); python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$f" 2>/dev/null || BADSYN="$BADSYN$f " ;;
-    *.mjs|*.js)
-      if command -v node >/dev/null 2>&1; then
-        NSYN=$((NSYN+1)); node --check "$f" 2>/dev/null || BADSYN="$BADSYN$f "
-      else UNPARSED="$UNPARSED$f "
-      fi ;;
-  esac
-done < "$TMP/headscripts"
-if [ -n "$BADSYN" ]; then fail "a committed script does not parse: $BADSYN"
+python3 - "$TMP" <<'PYEND' > "$TMP/headsyn"
+import ast, os, subprocess, sys
+tmp = sys.argv[1]
+names = subprocess.run(["git","ls-files","-z"], capture_output=True).stdout.split(b"\0")
+bad, n, unparsed = [], 0, []
+have_node = subprocess.run(["sh","-c","command -v node"], capture_output=True).returncode == 0
+for raw in names:
+    if not raw: continue
+    low = raw.lower()
+    # -z gives raw bytes, so no quoting to undo, and the extension is matched without regard
+    # to case: the blocking half once selected case-sensitively while the warning half did not.
+    if low.endswith(b".sh"):
+        n += 1
+        if subprocess.run(["sh","-n",raw], capture_output=True).returncode: bad.append(raw)
+    elif low.endswith(b".py"):
+        n += 1
+        try: ast.parse(open(raw,"rb").read())
+        except SyntaxError: bad.append(raw)
+    elif low.endswith(b".js") or low.endswith(b".mjs"):
+        if have_node:
+            n += 1
+            if subprocess.run(["node","--check",raw], capture_output=True).returncode: bad.append(raw)
+        else: unparsed.append(raw)
+print(n)
+print(len(unparsed))
+for b in bad: os.write(1, b"BAD " + b + b"\n")
+PYEND
+NSYN=$(sed -n 1p "$TMP/headsyn"); NJS=$(sed -n 2p "$TMP/headsyn")
+BADSYN=$(sed -n '3,$p' "$TMP/headsyn" | sed 's/^BAD //')
+if [ -n "$BADSYN" ]; then
+  fail "a committed script does not parse"; printf '%s\n' "$BADSYN" | sed 's/^/         /'
 else pass "$NSYN scripts parse at HEAD"; fi
 # HEAD is what ships, but every script blob in the history is published too, and the index
 # speaks for one branch at one moment -- the defect removed from step 5 and left here. Parse
@@ -160,7 +177,7 @@ done | grep -iE '\.(sh|py|mjs|js)"?$' | sort -u -k1,1 | while read -r sha path; 
   # this is: the grep above allows the trailing quote and the case below forbade it, so such
   # a blob was read and then dropped, counted as parsed without ever being parsed. The same
   # gap swallowed every .js and .mjs, which is four of the files the published site serves.
-  clean=$(printf '%s' "$path" | sed 's/^"//; s/"$//')
+  clean=$(printf '%s' "$path" | sed 's/^"//; s/"$//' | tr 'A-Z' 'a-z')
   case "$clean" in
     *.sh)  sh -n "$TMP/blob.src" 2>/dev/null || printf '%s %s\n' "$sha" "$path" >> "$TMP/oldsyn" ;;
     *.py)  python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$TMP/blob.src" 2>/dev/null || printf '%s %s\n' "$sha" "$path" >> "$TMP/oldsyn" ;;
@@ -180,7 +197,7 @@ if [ -s "$TMP/oldsyn" ]; then
   note "a broken intermediate version is published with the history; it is not what ships."
 else pass "every script blob in the history parses too"
 fi
-[ -n "$UNPARSED" ] && warn "node not installed; $(printf '%s' "$UNPARSED" | wc -w | tr -d ' ') JavaScript files went unparsed"
+[ "${NJS:-0}" -gt 0 ] && warn "node not installed; $NJS JavaScript files went unparsed"
 note "sh -n and node --check are parsers: they do not resolve a name, so a call to a function"
 note "that no longer exists parses cleanly. Step 2 once shipped exactly that." 
 
@@ -226,7 +243,7 @@ done | awk '{ s=$1; i=index($0," "); pth=substr($0,i+1); if (index(pth,"docs/pdf
 : > "$TMP/pdfbytes"
 while read -r sha path; do
   [ -n "$sha" ] || continue
-  [ "$(git cat-file blob "$sha" 2>/dev/null | head -c 5)" = "%PDF-" ] && printf '%s\n' "$path" >> "$TMP/pdfbytes"
+  git cat-file blob "$sha" 2>/dev/null | head -c 1024 | LC_ALL=C grep -q '%PDF-' && printf '%s\n' "$path" >> "$TMP/pdfbytes"
 done < "$TMP/outside" || true
 UNEXPECTED=$(printf '%s\n' "$UNEXPECTED"; cat "$TMP/pdfbytes")
 UNEXPECTED=$(printf '%s\n' "$UNEXPECTED" | sed '/^$/d' | sort -u)
@@ -395,11 +412,27 @@ printf '%s\n' "$PDFBLOBS" | while read -r sha path; do
     # extractable text, so an image-only page -- which is exactly the shape of a scanned page
     # image -- satisfied a size test while nothing had been read from it. Require a character
     # that is not whitespace.
-    if pdftotext "$TMP/b.pdf" "$TMP/b.txt" 2>/dev/null \
-       && [ -n "$(tr -d '[:space:]' < "$TMP/b.txt" | head -c 1)" ]; then
-      grep -iE "$SECRETS" "$TMP/b.txt" | awk -v p="$path" '{print p": "$0}'
+    # PER PAGE. The defect this replaced is per-page -- a page carried as an image yields
+    # nothing while the pages around it yield plenty -- and testing the whole document only
+    # asks whether SOME page could be read. A scanned appendix inside a typeset document is
+    # the commoner shape, and it passed under a line saying the document had been read.
+    NP=$(pdfinfo "$TMP/b.pdf" 2>/dev/null | awk '/^Pages/{print $2}')
+    case "$NP" in ''|*[!0-9]*) NP=0;; esac
+    if [ "$NP" -lt 1 ]; then
+      printf '%s\n' "UNREADABLE $path: no page count could be read" >> "$TMP/unread"
     else
-      printf '%s\n' "UNREADABLE $path: pdftotext produced no text" >> "$TMP/unread"
+      BADP=""; : > "$TMP/b.all"; PG=1
+      while [ "$PG" -le "$NP" ]; do
+        pdftotext -f "$PG" -l "$PG" "$TMP/b.pdf" "$TMP/b.txt" 2>/dev/null || true
+        if [ -n "$(tr -d '[:space:]' < "$TMP/b.txt" 2>/dev/null | head -c 1)" ]; then
+          cat "$TMP/b.txt" >> "$TMP/b.all"
+        else
+          BADP="$BADP$PG "
+        fi
+        PG=$((PG+1))
+      done
+      [ -n "$BADP" ] && printf '%s\n' "UNREADABLE $path: page(s) $BADP yielded no text at all" >> "$TMP/unread"
+      grep -iE "$SECRETS" "$TMP/b.all" | awk -v p="$path" '{print p": "$0}'
     fi
   fi
 done > "$TMP/pdfhits" || true
