@@ -132,6 +132,19 @@ else fail "a private path is in the history"; printf '%s\n' "$BAD" | sed 's/^/  
 # check reads a tag's message and tagger but not its name. A branch called PRIVATE-referee-
 # dossier, or one named after an address, passed the whole audit. Match the SHORT name: every
 # full refname begins with refs/, which the patterns above would match on every ref alike.
+# A submodule's content is not in this repository, so nothing here can speak for it, and its
+# declared URL names a repository that may be private. This project has none; if one ever
+# appears the audit must say so rather than pass over it in silence.
+SUB=$(objpaths | grep -E '(^|/)\.gitmodules$' || true)
+if [ -z "$SUB" ]; then pass "no submodule has ever been declared"
+else
+  fail "a submodule is declared, and this audit cannot read what it points at"
+  printf '%s\n' "$SUB" | sed 's/^/         /'
+  for c in $(git rev-list --all); do
+    git show "$c:.gitmodules" 2>/dev/null | grep -E '^\s*url' | sed 's/^/         /'
+  done | sort -u
+fi
+
 REFHIT=$(git for-each-ref --format='%(refname:short)' | grep -E "$PRIVPATS|$SECRETS" || true)
 if [ -z "$REFHIT" ]; then
   pass "$(git for-each-ref | wc -l | tr -d ' ') refs, none carrying a private name"
