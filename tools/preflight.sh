@@ -174,7 +174,17 @@ for raw in names:
     elif low.endswith(b".js") or low.endswith(b".mjs"):
         if have_node:
             n += 1
-            if subprocess.run(["node","--check",raw], capture_output=True).returncode: bad.append(raw)
+            # node refuses a name it does not recognise, so an UPPER-CASE extension was
+            # reported as a syntax error on a file that parses perfectly. Copy the bytes to a
+            # name it accepts, keeping which of the two it is, since that decides whether the
+            # file is read as a module or as an ordinary script.
+            ext = ".mjs" if low.endswith(b".mjs") else ".js"
+            tmpf = os.path.join(tmp, "headcheck" + ext)
+            try:
+                with open(tmpf, "wb") as g: g.write(open(raw, "rb").read())
+            except OSError:
+                bad.append(raw); continue
+            if subprocess.run(["node","--check",tmpf], capture_output=True).returncode: bad.append(raw)
         else: unparsed += 1
 # Two channels, two files. Counts and findings once shared one stream, one buffered and one
 # not, so the counts landed after the findings and the shell read each as the other. The
@@ -209,8 +219,13 @@ done | grep -iE '\.(sh|py|mjs|js)"?$' | sort -u -k1,1 | while read -r sha path; 
     *.py)  python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$TMP/blob.src" 2>/dev/null || printf '%s %s\n' "$sha" "$path" >> "$TMP/oldsyn" ;;
     *.mjs|*.js)
       if command -v node >/dev/null 2>&1; then
-        cp "$TMP/blob.src" "$TMP/blob.mjs"
-        node --check "$TMP/blob.mjs" 2>/dev/null || printf '%s %s\n' "$sha" "$path" >> "$TMP/oldsyn"
+        # Keep which of the two it is: everything was checked as a module, so an ordinary
+        # script using a word that is reserved only in a module was reported as broken.
+        case "$clean" in
+          *.mjs) cp "$TMP/blob.src" "$TMP/blob.mjs"; JSF="$TMP/blob.mjs" ;;
+          *)     cp "$TMP/blob.src" "$TMP/blob.js";  JSF="$TMP/blob.js"  ;;
+        esac
+        node --check "$JSF" 2>/dev/null || printf '%s %s\n' "$sha" "$path" >> "$TMP/oldsyn"
       fi ;;
   esac
 done || true
