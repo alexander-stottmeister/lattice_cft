@@ -58,8 +58,25 @@ SECRETS="$P_SESS|$P_MAIL|$P_INST|$P_HOME|$P_WS"
 # ls-tree quotes a path containing a newline -- "docs/notes\nOsborne-scan.pdf" -- which is
 # what keeps it on one line, but the surrounding quotes then defeat an anchored match: a
 # pattern ending in \.pdf$ does not fire, because the line ends in a quote. Strip them.
+# Every root whose tree has to be walked. `git rev-list --all` lists COMMITS, and a tag may
+# point straight at a TREE, which publishes that tree and every blob under it while no loop
+# here reaches them. Such a tag travels in a clone. The enumeration this script replaced did
+# list those blobs, so the fix for the duplicate-blob defect is what opened the hole.
+allroots() {
+  git rev-list --all
+  git for-each-ref --format='%(objectname)' 2>/dev/null | while read -r o; do
+    [ -n "$o" ] || continue
+    ty=$(git cat-file -t "$o" 2>/dev/null)
+    if [ "$ty" = "tag" ]; then
+      o=$(git rev-parse "$o^{}" 2>/dev/null) || continue
+      ty=$(git cat-file -t "$o" 2>/dev/null)
+    fi
+    [ "$ty" = "tree" ] && printf '%s\n' "$o"
+  done
+}
+
 objpaths() {
-  for c in $(git rev-list --all); do git ls-tree -r --name-only "$c"; done \
+  for c in $(allroots); do git ls-tree -r --name-only "$c"; done \
     | sed 's/^"//; s/"$//' | sort -u
 }
 
@@ -68,7 +85,7 @@ objpaths() {
 # one moment, so a binary committed and then deleted, or committed on a side branch, was never
 # opened at all. Deduplicated by sha, because the same bytes at several paths need reading once.
 blobsof() {
-  for c in $(git rev-list --all); do
+  for c in $(allroots); do
     git ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
   done | grep -iE "\\$1\"?$" | sort -u -k1,1
 }
@@ -106,7 +123,9 @@ echo "0. the committed auditor parses"
 # and a BROKEN script at HEAD was reported as parsing. That is the defect this step exists to
 # name, in this step.
 BADSYN=""; NSYN=0; UNPARSED=""
-git -c core.quotepath=false ls-files | grep -E '\.(sh|py|mjs|js)$' > "$TMP/headscripts" || true
+# -z, then NUL to newline: git quotes a path holding a quote, a backslash or a control
+# character whatever core.quotepath says, and the anchored pattern then skipped it.
+git ls-files -z | tr '\0' '\n' | grep -E '\.(sh|py|mjs|js)$' > "$TMP/headscripts" || true
 while IFS= read -r f; do
   [ -n "$f" ] || continue
   case "$f" in
@@ -126,7 +145,7 @@ else pass "$NSYN scripts parse at HEAD"; fi
 # them all. A broken blob that is not at HEAD is a historical artefact rather than a defect in
 # what ships, so it is named rather than blocking.
 : > "$TMP/oldsyn"
-for c in $(git rev-list --all); do
+for c in $(allroots); do
   git ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
 done | grep -iE '\.(sh|py|mjs|js)"?$' | sort -u -k1,1 | while read -r sha path; do
   [ -n "$sha" ] || continue
@@ -194,9 +213,10 @@ UNEXPECTED=$(objpaths | grep -i '\.pdf$' | grep -v '^docs/pdf/' || true)
 # survived only under the allowed path and the filter then removed it entirely: the same
 # enumeration defect this script has now fixed twice, back inside the check written to close
 # it. Quoting is off, so the filter sees the real path.
-for c in $(git rev-list --all); do
+for c in $(allroots); do
   git -c core.quotepath=false ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
-done | grep -v ' docs/pdf/' | sort -u > "$TMP/outside" || true
+done | awk '{ s=$1; i=index($0," "); pth=substr($0,i+1); if (index(pth,"docs/pdf/")!=1) print s" "pth }' \
+  | sort -u > "$TMP/outside" || true
 : > "$TMP/pdfbytes"
 while read -r sha path; do
   [ -n "$sha" ] || continue
@@ -247,7 +267,7 @@ if [ -z "$SUB" ]; then pass "no submodule has ever been declared"
 else
   fail "a submodule is declared, and this audit cannot read what it points at"
   printf '%s\n' "$SUB" | sed 's/^/         /'
-  for c in $(git rev-list --all); do
+  for c in $(allroots); do
     git show "$c:.gitmodules" 2>/dev/null | grep -E '^\s*url' | sed 's/^/         /'
   done | sort -u
 fi
@@ -269,7 +289,7 @@ echo "4. no session URL, address or local path, on any branch"
 # empty result, and an empty result reads as a green line: the same fail-open shape as a
 # missing tool. git grep exits 0 when it matches, 1 when it does not, and above 1 on error.
 set +e
-git grep -l -i -E "$SECRETS" $(git rev-list --all) -- . > "$TMP/hits4" 2> "$TMP/err4"
+git grep -l -i -E "$SECRETS" $(allroots) -- . > "$TMP/hits4" 2> "$TMP/err4"
 RC4=$?
 set -e
 HIT=$(sort -u "$TMP/hits4")
@@ -285,7 +305,7 @@ else fail "a file on some branch carries one of these"; echo "$HIT" | sed 's/^/ 
 # were never in scope at all. Review planted all three carrying a real address and they passed.
 # Use git's own rule, a NUL byte in the first 8000, and name every such blob except the PDFs,
 # which step 5 opens with readers of their own.
-for c in $(git rev-list --all); do
+for c in $(allroots); do
   git ls-tree -r "$c" | sed -n 's/^[0-9]* blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
 done | sort -u -k1,1 | while read -r sha path; do
   [ -n "$sha" ] || continue
@@ -307,7 +327,7 @@ fi
 # A SYMLINK's content is its target, and git grep over a revision skips mode 120000, so a
 # link pointing at a private absolute path was read by nothing: only its own name reached
 # step 3. Read every link target ever committed.
-for c in $(git rev-list --all); do
+for c in $(allroots); do
   git ls-tree -r "$c" | sed -n 's/^120000 blob \([0-9a-f]*\)	\(.*\)$/\1 \2/p'
 done | sort -u -k1,1 > "$TMP/links" || true
 : > "$TMP/linkhits"
@@ -532,7 +552,10 @@ if command -v gh >/dev/null 2>&1; then
   # Tags too: this script already treats a local annotated tag as a publication surface.
   # Fail closed, as the branch comparison beside it does. With only this call failing the step
   # printed a clean line over an answer it never received.
-  set +e; RTAGS=$(gh api --paginate "repos/$SLUG/tags" --jq '.[].name' 2>/dev/null | sort -u); RCT=$?; set -e
+  # Capture the API's OWN status. Taken after a pipeline it was sort's status, which is
+  # always zero, so the guard below could never fire and the step stayed fail-open.
+  set +e; gh api --paginate "repos/$SLUG/tags" --jq '.[].name' > "$TMP/rtags.raw" 2>/dev/null; RCT=$?; set -e
+  RTAGS=$(sort -u "$TMP/rtags.raw" 2>/dev/null)
   git for-each-ref --format='%(refname:short)' refs/tags | sort -u > "$TMP/ltags"
   printf '%s\n' "$RTAGS" | sed '/^$/d' > "$TMP/rtags"
   ONLYT=$(comm -23 "$TMP/rtags" "$TMP/ltags")
