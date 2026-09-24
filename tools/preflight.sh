@@ -1,5 +1,7 @@
 #!/bin/sh
-# Pre-flight audit, to be run before making this repository public.
+# Audit of everything this repository publishes. Written to be run before making it public,
+# which happened on 2026-09-23; since then everything pushed is published when it is pushed,
+# so this belongs before a push. The name is kept because it is what the file is called.
 #
 #     sh tools/preflight.sh            # audit only
 #     sh tools/preflight.sh --build    # also rebuild everything from the clone and diff it
@@ -530,7 +532,7 @@ fi
 # reads, and a figure in a paper is not a finding, so it warns rather than blocks -- but it
 # reaches the closing verdict, and the three documents published here embed none.
 if [ -s "$TMP/imgnote" ]; then
-  warn "an embedded image carries content nothing here reads; look at each before flipping"
+  warn "an embedded image carries content nothing here reads; look at each before pushing"
   sort -u "$TMP/imgnote" | sed 's/^/         /'
 fi
 note "limit: strings cannot read a compressed object stream, so metadata inside one is not"
@@ -811,21 +813,23 @@ if command -v gh >/dev/null 2>&1; then
   else
     pass "the remote's description, topics, issues, comments, releases and assets are clean"
   fi
-  note "decide each of these deliberately; enabling Pages is itself the flip"
+  note "decide each of these deliberately; public and Pages are already on, so a change"
+  note "to any of them is a change to what is published"
 else
   warn "gh not installed; the remote's settings and its own prose went unchecked"
 fi
 
 echo
 echo "10. order of operations"
-note "audit, then flip, then enable Pages. Never prune before a push: a fetch or push"
-note "rewrites the remote-tracking reflog and re-anchors unreachable objects."
+note "the flip and Pages are done, so what survives of this rule is the last clause:"
+note "never prune before a push, because a fetch or push rewrites the remote-tracking"
+note "reflog and re-anchors objects that were unreachable."
 
 echo
 if [ "$FAIL" -ne 0 ]; then
   echo "FAIL: $FAIL blocking finding(s)."
 elif [ "$WARN" -ne 0 ]; then
-  echo "PASS with $WARN warning(s): no blocking finding, but read them before flipping."
+  echo "PASS with $WARN warning(s): no blocking finding, but read them before pushing."
 else
   echo "PASS: no blocking finding."
 fi
