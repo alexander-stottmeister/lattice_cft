@@ -38,7 +38,7 @@ trap 'rm -rf "$TMP"' EXIT
 # cannot see an untracked file, and failed the moment the script was committed.
 # Each pattern describes an ACTUAL leak, not the vocabulary of one. The looser forms fired on
 # any text that merely discussed them -- including this script's own history, where the version
-# committed in c5636a7 carries the pattern list inline and nothing else. A check that fails on
+# committed in 9607c7c carries the pattern list inline and nothing else. A check that fails on
 # a list of patterns trains its reader to ignore it, and the list is not private: the fragments
 # below sit in the published file, where anyone can reassemble them. So a bare '/Users/' is not
 # a finding; '/Users/' followed by a name is. The fragments are kept as well, so that this file
