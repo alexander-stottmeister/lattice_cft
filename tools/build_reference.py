@@ -129,7 +129,7 @@ def source_date():
     """
     epoch = os.environ.get("SOURCE_DATE_EPOCH")
     if epoch:
-        return datetime.datetime.utcfromtimestamp(int(epoch)).date().isoformat()
+        return datetime.datetime.fromtimestamp(int(epoch), datetime.timezone.utc).date().isoformat()
     try:
         out = subprocess.run(["git", "log", "-1", "--format=%cs", "--", "free_fermion_cft_v5.tex"],
                              cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -205,7 +205,11 @@ def main():
         L += [""]
     open(os.path.join(REF, "results.md"), "w").write("\n".join(L) + "\n")
     with open(os.path.join(DATA, "results.json"), "w") as f:
-        json.dump({"generated": stamp, "rows": rows}, f, indent=1)
+        # "manuscript_date", not "generated": the value is the date of the source this index
+        # reflects, and calling it the generation date said the file was made on a day it
+        # was not. Nothing reads the field, so the rename costs nothing and the old name
+        # was the last place the clock's meaning survived.
+        json.dump({"manuscript_date": stamp, "rows": rows}, f, indent=1)
     print("  results.md: %d statements, %d sections, %d new in v5"
           % (len(rows), len({r["section"] for r in rows}), sum(1 for r in rows if r["new_in_v5"])))
     print("  results.json written")
