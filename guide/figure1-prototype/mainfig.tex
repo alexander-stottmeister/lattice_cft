@@ -78,6 +78,8 @@
 
 % ===================================================================== (b)
 \paneltitle{0}{6.6}{(b)\; The rate each route proves}
+\node[mute,anchor=north west,font=\scriptsize,text width=7.2cm,inner sep=0pt] at (0.25,6.22)
+  {wavelet route: needs $\sigma_K>1+\delta$ ($K\ge5$ at $\delta=1$, $K\ge9$ at $\delta=2$); the other two routes assume nothing of $s$. Outside the plot, so that it can hide no data.};
 \begin{axis}[name=pb, at={(0.95cm,1.3cm)}, anchor=south west,
     width=4.0cm, height=3.8cm,
     xmin=-0.08, xmax=3.1, ymin=-0.08, ymax=3.22,
@@ -102,8 +104,6 @@
   \node[rl,mom,xshift=3pt,yshift=5pt] at (axis cs:3,2) {mom.\ cutoff: $\min\{\delta,2\}$};
   \node[rl,wav,xshift=3pt,yshift=-5pt] at (axis cs:3,2) {wavelet, re-centred: $\min\{\delta,2\}$};
   \node[rl,wav,xshift=3pt] at (axis cs:3,1) {wavelet: $\min\{\delta,1\}$};
-  \node[mute,anchor=north west,align=left,font=\scriptsize,text width=2.1cm,inner sep=1.5pt,fill=white] at (axis cs:0.02,3.15)
-     {wavelet route: needs ${\sigma_K>1+\delta}$; the other two assume nothing of $s$};
 \end{axis}
 
 % ===================================================================== (c)

@@ -325,13 +325,17 @@ files. The open squares of panel (c) are read from `thresholds.dat`; the bars ar
 mismatch would show as a square off its bar's end.
 
 **Prototype.** `guide/figure1-prototype/mainfig.tex` builds twice with pdflatex to 0 errors,
-0 overfull boxes and 0 undefined references, one page of 439.5 × 360.7 pt (15.5 × 12.7 cm),
+0 overfull boxes and 0 undefined references, one page of about 439.5 × 360.7 pt (15.5 × 12.7 cm),
 laid out for a 15 cm text width (it will be included at `\textwidth`, a 3 % reduction);
-rendered at 300 dpi. Two review passes on 24 October 2026 found three collisions the author's
-own check had missed (a legend entry on the dotted sample; grid lines through panel (b)'s note;
-then that note's white ground drawn over the data between δ ≈ 1.5 and 1.8), each fixed in the
-commit that followed. Every label is 7 pt or larger except the σ_K tick labels along the top of
-panel (c), which are 5 pt and must grow, move or go before the figure is used. Before it becomes Figure 1: F3 verified at the source (whether the published
+rendered at 300 dpi. Three review passes on 24 October 2026 found collisions the author's own
+check had missed: a legend entry on the dotted sample and grid lines through panel (b)'s note
+(fixed in `8161849`), then that note's white ground drawn over the data (commit `5cb4aa5`
+claimed to fix it and did not: the author rendered the file before a last edit that re-lengthened
+the note, and the third pass measured the diagonal still hidden for δ ≈ 1.70–1.77). The note now
+sits under the panel's title, outside the plot, and the committed file is verified by rendering
+it with and without the note and diffing the two: the difference must lie outside the axis box.
+Every label is 7 pt or larger except the σ_K tick labels along the top of panel (c), which are
+5 pt and must grow, move or go before the figure is used. Before it becomes Figure 1: F3 verified at the source (whether the published
 exponent compares with the one-particle operator norm as drawn); the σ_K source fixed (F2);
 the caption written, naming the statements and scripts behind each line and marker, and
 stating that the wavelet line is two-sided only for 0 < δ ≤ 1 (Remark 4.8, eq. (KSratelower)
