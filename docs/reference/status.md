@@ -67,10 +67,10 @@ agreement can be checked rather than taken on trust.
   factorial squared and the series diverges for every time. The text now says so, and the
   actual repair is Nelson's commutator theorem. This is recorded rather than removed because
   the mistake is instructive.
-- **Theorem 4.25 printed `K ≥ 6`** in the July 2026 build, where the strict inequality of
-  Definition 3.12 and the table of Remark 3.13 give `K ≥ 7`. Corrected on 22 September 2026
-  in the theorem statement, in the two Markdown records and in the PDF served here; this
-  page said until 24 October 2026 that the statement still carried the old value, which was
-  wrong from the day the page was written.
+- **Theorem 4.25 printed `K ≥ 6`** in its source until 22 September 2026, where the strict
+  inequality of Definition 3.12 and the table of Remark 3.13 give `K ≥ 7`. Corrected that day
+  in the theorem statement and in the two Markdown records; the PDF served here was built
+  after the fix. This page said until 24 October 2026 that the statement still carried the
+  old value, which was wrong from the day the page was written.
 - A **sibling folder** in the author's workspace, not part of this repository, still cites the
   published article with the wrong volume and year.

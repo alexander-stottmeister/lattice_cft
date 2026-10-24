@@ -172,8 +172,9 @@ date it was wrong.
 **F2 (for the council).** The Sobolev exponents in `docs/data/recorded.json` (computed by
 `tools/make_data.py`) and the table of Remark 3.13 (from `numerics/os_check4.py`) differ in the
 third decimal: by 0.001 at K = 6, 7, 8 and by more from K = 9 on (3.162 against 3.165, 3.402
-against 3.406, 3.635 against 3.641; the re-read's 3.873 at K = 12 against 3.865). No
-threshold moves. The guide quotes one source and says which; the mathematical physicist
+against 3.406, 3.635 against 3.641; the re-read's 3.873 at K = 12 against 3.865), and against
+Remark 3.13 also at K = 3 (1.416 against 1.415) and K = 2 (1.002 against the exact 1.000). No
+threshold moves, with σ₂ = 1 taken as exact. The guide quotes one source and says which; the mathematical physicist
 decides which in round R1.
 
 **F3 (a verification item, not a finding).** Panel (b) of the prototype draws the published
@@ -195,8 +196,9 @@ not parse) and byte-identical regeneration of all 25 generated and 2 spliced fil
 
 All four members run on Opus 5.5 with reasoning effort `max`, through the agent definitions
 `council-aqft`, `council-qi`, `council-mp` and `council-editor` in the user's agent folder
-(`council-mp`, the mathematical physicist, was added on 24 October 2026 beside the three used
-for the P(φ)₂ companion; the constructive-QFT member of that council is not needed here).
+(`council-mp`, the mathematical physicist, was added on 24 October 2026 beside the four created
+on 23 October 2026 for the P(φ)₂ companion, of which three are used here; that council's
+constructive-QFT member is not needed).
 Agent definitions are loaded at session start, so the council runs in a fresh session, and the
 orchestrator confirms the five names appear in its agent list before round R1. Each member's
 body says that the brief's role card governs, so no definition needs editing for this project.
@@ -213,7 +215,7 @@ The editor arbitrates disagreements and records each with its outcome in
 
 ## 7. Process
 
-Six rounds, as in the P(φ)₂ companion (which ran on 23–24 October 2026 and produced a 20-page
+A brief, R0, and then six rounds R1–R6 as in the P(φ)₂ companion (which ran on 23–24 October 2026 and produced a 20-page
 companion; its verifier found one CRITICAL and one MAJOR item, both in a figure's arrows, and
 some twenty MINOR ones, all resolved before the record was committed). The council's shared memory
 is the folder `guide/council/`.
@@ -344,7 +346,7 @@ step; the simulation budget) and points to the site for the rest.
    simulation Letter and a cross-reference to its own planned guide; or a joint account of
    both projects.
 4. **Size.** Full council, ten agent runs plus the reviewer (default), or lean: R1 by the
-   three domain members with the editor synthesising only, R4 and R5 merged (seven runs).
+   three domain members with the editor synthesising only, R4 and R5 merged (eight runs).
 5. **Figure 1.** As prototyped (default), or with panel (c) replaced by the simulation budget
    (the vacuum deviation against N − M, first order on the full algebra and second order on
    the chiral one), which would move the regularity thresholds to a table.

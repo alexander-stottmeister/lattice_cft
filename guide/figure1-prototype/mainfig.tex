@@ -102,13 +102,13 @@
   \node[rl,mom,xshift=3pt,yshift=5pt] at (axis cs:3,2) {mom.\ cutoff: $\min\{\delta,2\}$};
   \node[rl,wav,xshift=3pt,yshift=-5pt] at (axis cs:3,2) {wavelet, re-centred: $\min\{\delta,2\}$};
   \node[rl,wav,xshift=3pt] at (axis cs:3,1) {wavelet: $\min\{\delta,1\}$};
-  \node[mute,anchor=north west,align=left,font=\scriptsize,text width=2.1cm,inner sep=1pt] at (axis cs:0.02,3.15)
+  \node[mute,anchor=north west,align=left,font=\scriptsize,text width=2.1cm,inner sep=1.5pt,fill=white] at (axis cs:0.02,3.15)
      {wavelet route: needs $\sigma_K>1+\delta$ ($K\ge5$ at $\delta=1$, $K\ge9$ at $\delta=2$); the other two assume nothing of $s$};
 \end{axis}
 
 % ===================================================================== (c)
 \paneltitle{8.65}{6.6}{(c)\; What ``sufficiently regular'' costs}
-\begin{axis}[name=pc, at={(11.2cm,1.3cm)}, anchor=south west,
+\begin{axis}[name=pc, at={(11.4cm,1.3cm)}, anchor=south west,
     width=3.5cm, height=3.8cm,
     xmin=1.5, xmax=12.5, ymin=-0.7, ymax=7.7,
     xtick={2,...,12}, xlabel={Daubechies order $K$}, xlabel style={yshift=2pt},
@@ -143,15 +143,15 @@
     xtick={2,...,12}, xticklabels from table={sigmas.dat}{sigma},
     xticklabel style={rotate=90,anchor=west,font=\tiny,text=mute}]
 \end{axis}
-\node[mute,anchor=south east,font=\scriptsize,inner sep=1pt] at (11.15,5.12) {$\sigma_K$:};
-\node[mute,anchor=north east,align=right,font=\scriptsize,text width=3.3cm,inner sep=1pt] at (11.1,1.15)
+\node[mute,anchor=south east,font=\scriptsize,inner sep=1pt] at (11.35,5.12) {$\sigma_K$:};
+\node[mute,anchor=north east,align=right,font=\scriptsize,text width=3.3cm,inner sep=1pt] at (11.3,1.15)
   {dotted line: the published ``sufficiently regular''; db2 ($\sigma_2=1$) is borderline};
 
 % ===================================================================== legend strip
 \begin{scope}[shift={(0.0,-0.3)}]
   \draw[ink,line width=1.0pt] (0,0) -- (0.45,0); \node[anchor=west,ink] at (0.48,0) {proved (two-sided where v5 writes $\asymp$)};
-  \draw[ink,line width=0.7pt] (5.4,0) circle (2.0pt); \node[anchor=west,ink] at (5.55,0) {measured (numerical; os\_check11--13.py)};
-  \draw[mute,densely dotted,line width=1.8pt] (10.6,0) -- (11.05,0); \node[anchor=west,ink] at (11.1,0) {published, not established};
+  \draw[ink,line width=0.7pt] (5.7,0) circle (2.0pt); \node[anchor=west,ink] at (5.85,0) {measured (numerical; os\_check11--13)};
+  \draw[mute,densely dotted,line width=1.8pt] (11.25,0) -- (11.7,0); \node[anchor=west,ink] at (11.75,0) {published, not established};
 \end{scope}
 \end{tikzpicture}
 \end{document}
