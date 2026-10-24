@@ -1,0 +1,8 @@
+row minK needs provenance where
+0 3 sigma_K>1 recorded Lemma~4.7,~D_W~in~the~domain
+1 4 sigma_K>3/2 recorded Lemma~4.23,~both~Cauchy-Schwarz~factors
+2 5 sigma_K>2 recorded Remark~6.4,~the~simulation~budget
+3 7 sigma_K>5/2 recorded Theorem~4.25,~the~smeared~rate
+4 9 sigma_K>3 recorded the~advertised~delta~=~2~rate
+5 9 rho>5/2,Kbeta>3/2 typed Theorem~4.29,~reconstruction
+6 10 Kbeta>=5/2 typed Theorem~4.29,~its~rate

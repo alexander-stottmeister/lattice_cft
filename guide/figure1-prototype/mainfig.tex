@@ -1,0 +1,157 @@
+% Design prototype of the guide's main figure.  Not a deliverable: a proposal for the
+% council (guide/GUIDE-PLAN.md, Section 9).  Data: make_dat.py beside this file, which
+% reads docs/data/recorded.json and nothing else.  Numbers of statements are v5's, from
+% build/free_fermion_cft_v5.aux; the findings F1-F8 carry the published article's numbers,
+% as critical-reread.tex does.  Laid out for a 15 cm text width.  Build twice with pdflatex.
+\documentclass[border=2pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta,calc,positioning}
+
+% Colours.  Ink, mute, grid and the first two series are the repository's own (tools/svgplot.py
+% THEMES["light"], docs/assets/site.css); the third series is the dataviz reference aqua,
+% because no third repository hue passes the all-pairs validator next to blue and amber
+% (blue/amber/aqua: worst CVD dE 13.3, normal 21.2, all pairs, light; validate_palette.js).
+\definecolor{ink}{HTML}{1F2328}
+\definecolor{mute}{HTML}{57606A}
+\definecolor{grid}{HTML}{D8DEE4}
+\definecolor{soft}{HTML}{F6F8FA}
+\definecolor{mom}{HTML}{0969DA}     % momentum-cutoff route
+\definecolor{wav}{HTML}{9A6700}     % wavelet route (both comparison conventions)
+\definecolor{cur}{HTML}{1BAF7A}     % U(1) current approximants
+\definecolor{broken}{HTML}{CF222E}  % status: a finding against the published proof
+\definecolor{stands}{HTML}{1A7F37}  % status: theorem stands, statement unchanged
+
+\pgfplotsset{
+  every axis/.append style={
+    font=\scriptsize, axis line style={mute}, tick style={mute},
+    every tick label/.append style={mute}, label style={ink},
+    grid style={grid}, major grid style={grid}, tick align=outside,
+    scale only axis, clip=false},
+}
+\tikzset{
+  spine/.style={draw=mute,fill=soft,rounded corners=2pt,line width=0.5pt,
+                text width=1.9cm,minimum height=0.95cm,inner sep=2pt,
+                font=\scriptsize,text=ink,align=center},
+  spinestands/.style={spine,draw=stands,line width=1.0pt},
+  badge/.style={fill=broken,text=white,font=\scriptsize\bfseries,rounded corners=1.2pt,
+                inner sep=1.4pt},
+  okbadge/.style={fill=stands,text=white,font=\scriptsize\bfseries,rounded corners=1.2pt,
+                  inner sep=1.4pt},
+  col/.style={anchor=north,align=center,text width=2.35cm,font=\scriptsize,text=ink,inner sep=1pt},
+  flow/.style={-{Stealth[length=4pt]},mute,line width=0.6pt},
+  rl/.style={anchor=west,font=\scriptsize,inner sep=1pt},
+}
+\newcommand{\paneltitle}[3]{\node[anchor=north west,ink,font=\footnotesize] at (#1,#2) {\textbf{#3}};}
+\newcommand{\sev}[1]{\textcolor{broken}{\textit{#1}}}
+\newcommand{\fix}[1]{$\rightarrow$ #1}
+
+\begin{document}
+\begin{tikzpicture}[x=1cm,y=1cm,font=\scriptsize]
+
+% ===================================================================== (a)
+\paneltitle{0}{12.05}{(a)\; Where the published proofs broke, and what stands}
+
+\node[spine] (b1) at (1.03,10.85) {lattice fermions at scale $N$};
+\node[spine] (b2) at (4.08,10.85) {scaling limit $\omega_\infty$ by the wavelet or the momentum-cutoff RG};
+\node[spine] (b3) at (6.53,10.85) {one-particle estimates};
+\node[spinestands] (b4) at (8.98,10.85) {Virasoro generators: Thm A $=$ 4.16};
+\node[spine] (b5) at (11.43,10.85) {smeared (4.25) and M\"obius (4.22) generators};
+\node[spinestands] (b6) at (13.88,10.85) {correlators: Thm B $=$ 6.1, Thm C $=$ 6.5};
+\foreach \i/\j in {b1/b2,b2/b3,b3/b4,b4/b5,b5/b6} {\draw[flow] (\i) -- (\j);}
+\node[okbadge,anchor=south,yshift=1pt] at (b4.north) {stands};
+\node[okbadge,anchor=south,yshift=1pt] at (b6.north) {stands};
+
+% findings under the step they hit (numbers of the published article); repairs in v5's numbers
+\node[col] at (1.03,10.05) {\tikz\node[badge]{F8};\ \sev{minor}\\ typos and constants in (25), Lemma 3.7, (204)/(205), (213)\\ \fix{corrected}};
+\node[col] at (4.08,10.05) {\tikz\node[badge]{F3};\\ \sev{hypothesis gap}\\ ``sufficiently regular'' hides $K\ge3$, $4$, $7$, $9$\\ \fix{Def.\ 3.12, Rem.\ 3.13; panel (c)}};
+\node[col] at (6.53,10.05) {\tikz\node[badge]{F1--2};\ \sev{false step}\\ $\hat s$-quotient bounded by continuity, but $\hat s(2\pi n)=0$: $\mathrm{Error}^2=\infty$ for $k\neq0$\\ \fix{Lemma 3.14, Rem.\ 4.33; panel (b)}};
+\node[col] at (8.98,10.05) {\tikz\node[badge]{F5};\\ \sev{normalisation}\\ Def.\ 4.2 off by $L/\pi$; read literally, $c=(L/\pi)^2$\\ \fix{Def.\ 4.3: $c=1$}\\[2pt] Thm 4.11 stated without proof \fix{proved as 4.16}};
+\node[col] at (11.43,10.05) {\tikz\node[badge]{F4};\ \sev{gap}\\ Rem.\ 4.14 (M\"obius) does not follow \fix{Rem.\ 4.22}\\[2pt] \tikz\node[badge]{F7};\ \sev{overstated}\\ locality claim \fix{reworded}};
+\node[col] at (13.88,10.05) {\tikz\node[badge]{F6};\ \sev{unproved}\\ an $N$-uniform energy bound was asserted: Thm C was conditional\\ \fix{Prop.\ 6.6 proves it; 6.5 unconditional}};
+
+\node[mute,anchor=north west,font=\scriptsize,text width=14.9cm,inner sep=0pt] at (0,7.05)
+  {F1--F8: numbering of the published article; all else: the revision (v5). No theorem statement changed.};
+
+% ===================================================================== (b)
+\paneltitle{0}{6.6}{(b)\; The rate each route proves}
+\begin{axis}[name=pb, at={(0.95cm,1.3cm)}, anchor=south west,
+    width=4.0cm, height=3.8cm,
+    xmin=-0.08, xmax=3.1, ymin=-0.08, ymax=3.22,
+    xtick={0,1,2,3}, ytick={0,1,2,3}, ymajorgrids,
+    xlabel={$\delta$\, (the vector lies in $h^{1+\delta}$)}, xlabel style={yshift=2pt},
+    ylabel={exponent $e$:\ error $\asymp\varepsilon_N^{\,e}$}, ylabel style={yshift=-4pt},
+    axis x line*=bottom, axis y line*=left]
+  % published claim, (204)-(210): e = delta on the wavelet route, for all k
+  \addplot[mute,densely dotted,line width=1.8pt,domain=0:3,samples=2] {x};
+  % v5, proved: currents (Lemma 5.1), wavelet re-centred and momentum cutoff (Rem. 4.8, Lemma 4.15), wavelet (Rem. 4.8)
+  \addplot[cur,line width=1.0pt,domain=0:3,samples=2] {x};
+  \addplot[wav,line width=2.2pt,domain=0:3,samples=50] {min(x,2)};
+  \addplot[mom,line width=1.0pt,domain=0:3,samples=50] {min(x,2)};
+  \addplot[wav,line width=1.0pt,domain=0:3,samples=50] {min(x,1)};
+  % measured exponents (numerical): open markers, shape = route
+  \addplot[mom,only marks,mark=o,mark size=2.1pt,line width=0.7pt] table[x=delta,y=rate] {meas_momentum.dat};
+  \addplot[cur,only marks,mark=triangle,mark size=2.6pt,line width=0.7pt] table[x=delta,y=rate] {meas_currents.dat};
+  \addplot[wav,only marks,mark=square,mark size=2.0pt,line width=0.7pt] table[x=delta,y=rate] {meas_recentred.dat};
+  % direct labels at the right ends, one line each; the statements are named in the caption
+  \node[rl,cur,xshift=3pt,yshift=5pt] at (axis cs:3,3) {currents: $\delta$, no cap};
+  \node[rl,mute,xshift=3pt,yshift=-5pt] at (axis cs:3,3) {published: $\delta$, for $k=0$ only};
+  \node[rl,mom,xshift=3pt,yshift=5pt] at (axis cs:3,2) {mom.\ cutoff: $\min\{\delta,2\}$};
+  \node[rl,wav,xshift=3pt,yshift=-5pt] at (axis cs:3,2) {wavelet, re-centred: $\min\{\delta,2\}$};
+  \node[rl,wav,xshift=3pt] at (axis cs:3,1) {wavelet: $\min\{\delta,1\}$};
+  \node[mute,anchor=north west,align=left,font=\scriptsize,text width=2.1cm,inner sep=1pt] at (axis cs:0.02,3.15)
+     {wavelet route: needs $\sigma_K>1+\delta$ ($K\ge5$ at $\delta=1$, $K\ge9$ at $\delta=2$); the other two assume nothing of $s$};
+\end{axis}
+
+% ===================================================================== (c)
+\paneltitle{8.65}{6.6}{(c)\; What ``sufficiently regular'' costs}
+\begin{axis}[name=pc, at={(11.2cm,1.3cm)}, anchor=south west,
+    width=3.5cm, height=3.8cm,
+    xmin=1.5, xmax=12.5, ymin=-0.7, ymax=7.7,
+    xtick={2,...,12}, xlabel={Daubechies order $K$}, xlabel style={yshift=2pt},
+    ytick={0,...,7}, y dir=reverse,
+    yticklabels={{4.7 core: $\sigma_K>1$},
+                 {4.23 smeared: $\sigma_K>\tfrac32$},
+                 {6.4 budget: $\sigma_K>2$},
+                 {4.25 rate: $\sigma_K>\tfrac52$},
+                 {$\delta=2$ rate (4.8): $\sigma_K>3$},
+                 {4.29 reconstruction},
+                 {4.29, its rate},
+                 {\textcolor{mom}{mom.\ cutoff, currents}}},
+    yticklabel style={align=right,font=\scriptsize,text=ink},
+    axis x line*=bottom, axis y line*=left, ytick style={draw=none}]
+  % bars from the minimal order to the right edge (typed from thresholds.dat; the open squares
+  % below are read from that file, so a mismatch would show as a square off its bar's end)
+  \fill[wav,opacity=0.16] (axis cs:2.58,-0.32) rectangle (axis cs:12.5,0.32);
+  \fill[wav,opacity=0.16] (axis cs:3.58,0.68) rectangle (axis cs:12.5,1.32);
+  \fill[wav,opacity=0.16] (axis cs:4.58,1.68) rectangle (axis cs:12.5,2.32);
+  \fill[wav,opacity=0.16] (axis cs:6.58,2.68) rectangle (axis cs:12.5,3.32);
+  \fill[wav,opacity=0.16] (axis cs:8.58,3.68) rectangle (axis cs:12.5,4.32);
+  \fill[wav,opacity=0.16] (axis cs:8.58,4.68) rectangle (axis cs:12.5,5.32);
+  \fill[wav,opacity=0.16] (axis cs:9.58,5.68) rectangle (axis cs:12.5,6.32);
+  \fill[mom,opacity=0.16] (axis cs:1.58,6.68) rectangle (axis cs:12.5,7.32);
+  \addplot[wav,only marks,mark=square,mark size=2.4pt,line width=0.8pt]
+     table[x=minK,y=row] {thresholds.dat};
+  % the folklore order
+  \draw[mute,densely dotted,line width=1.2pt] (axis cs:2,-0.65) -- (axis cs:2,7.65);
+\end{axis}
+\begin{axis}[at={(pc.south west)}, anchor=south west, width=3.5cm, height=3.8cm,
+    xmin=1.5, xmax=12.5, ymin=0, ymax=1, axis x line*=top, axis y line=none,
+    xtick={2,...,12}, xticklabels from table={sigmas.dat}{sigma},
+    xticklabel style={rotate=90,anchor=west,font=\tiny,text=mute}]
+\end{axis}
+\node[mute,anchor=south east,font=\scriptsize,inner sep=1pt] at (11.15,5.12) {$\sigma_K$:};
+\node[mute,anchor=north east,align=right,font=\scriptsize,text width=3.3cm,inner sep=1pt] at (11.1,1.15)
+  {dotted line: the published ``sufficiently regular''; db2 ($\sigma_2=1$) is borderline};
+
+% ===================================================================== legend strip
+\begin{scope}[shift={(0.0,-0.3)}]
+  \draw[ink,line width=1.0pt] (0,0) -- (0.45,0); \node[anchor=west,ink] at (0.48,0) {proved (two-sided where v5 writes $\asymp$)};
+  \draw[ink,line width=0.7pt] (5.4,0) circle (2.0pt); \node[anchor=west,ink] at (5.55,0) {measured (numerical; os\_check11--13.py)};
+  \draw[mute,densely dotted,line width=1.8pt] (10.6,0) -- (11.05,0); \node[anchor=west,ink] at (11.1,0) {published, not established};
+\end{scope}
+\end{tikzpicture}
+\end{document}
