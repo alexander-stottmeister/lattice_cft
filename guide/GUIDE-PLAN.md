@@ -170,11 +170,17 @@ claiming a defect the manuscript does not have); the page now records the correc
 date it was wrong.
 
 **F2 (for the council).** The Sobolev exponents in `docs/data/recorded.json` (computed by
-`tools/make_data.py`) and the table of Remark 3.13 (from `numerics/os_check4.py`) differ in the
-third decimal: by 0.001 at K = 6, 7, 8 and by more from K = 9 on (3.162 against 3.165, 3.402
-against 3.406, 3.635 against 3.641; the re-read's 3.873 at K = 12 against 3.865), and against
-Remark 3.13 also at K = 3 (1.416 against 1.415) and K = 2 (1.002 against the exact 1.000). No
-threshold moves, with σ₂ = 1 taken as exact. The guide quotes one source and says which; the mathematical physicist
+`tools/make_data.py` on an 8001-point grid) and the table of Remark 3.13 differ in the third
+decimal: by 0.001 at K = 6, 7, 8 and by more from K = 9 on (3.162 against 3.165, 3.402 against
+3.406, 3.635 against 3.641), and against Remark 3.13 also at K = 3 (1.416 against 1.415) and
+K = 2 (1.002 against the exact 1.000). The Remark names no script; the re-read's table
+(`critical-reread.tex`, Section 2, values on line 263) is `numerics/os_check4.py`'s 20001-point
+measurement, which reproduces the Remark from K = 4 on, while the Remark's K = 2, 3 entries are
+the literature values that script prints in its header. No threshold of the revision moves,
+with σ₂ = 1 taken as exact. The site's regularity-ladder widget does not take it as exact: it
+picks the first K whose recorded σ_K exceeds the slider value and so says "K = 2 (σ = 1.002)"
+at exponent 1, where Remark 3.13 makes K ≥ 3 the honest minimum (found in review; recorded as
+a pending correction). The guide quotes one source and says which; the mathematical physicist
 decides which in round R1.
 
 **F3 (a verification item, not a finding).** Panel (b) of the prototype draws the published
@@ -319,11 +325,13 @@ files. The open squares of panel (c) are read from `thresholds.dat`; the bars ar
 mismatch would show as a square off its bar's end.
 
 **Prototype.** `guide/figure1-prototype/mainfig.tex` builds twice with pdflatex to 0 errors,
-0 overfull boxes and 0 undefined references, one page of 436.8 × 360.7 pt (15.4 × 12.7 cm),
-laid out for a 15 cm text width (it will be included at `\textwidth`, a 2 % reduction);
-rendered at 170 dpi and checked for collisions. Every label is 7 pt or larger except the σ_K
-tick labels along the top of panel (c), which are 5 pt and must grow, move or go before the
-figure is used. Before it becomes Figure 1: F3 verified at the source (whether the published
+0 overfull boxes and 0 undefined references, one page of 439.5 × 360.7 pt (15.5 × 12.7 cm),
+laid out for a 15 cm text width (it will be included at `\textwidth`, a 3 % reduction);
+rendered at 300 dpi. Two review passes on 24 October 2026 found three collisions the author's
+own check had missed (a legend entry on the dotted sample; grid lines through panel (b)'s note;
+then that note's white ground drawn over the data between δ ≈ 1.5 and 1.8), each fixed in the
+commit that followed. Every label is 7 pt or larger except the σ_K tick labels along the top of
+panel (c), which are 5 pt and must grow, move or go before the figure is used. Before it becomes Figure 1: F3 verified at the source (whether the published
 exponent compares with the one-particle operator norm as drawn); the σ_K source fixed (F2);
 the caption written, naming the statements and scripts behind each line and marker, and
 stating that the wavelet line is two-sided only for 0 < δ ≤ 1 (Remark 4.8, eq. (KSratelower)
